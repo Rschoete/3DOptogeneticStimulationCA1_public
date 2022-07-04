@@ -1,0 +1,5 @@
+[submodule "Functions/globalFunctions"]
+	path = Functions/globalFunctions
+	url = https://github.com/Rschoete/globalFunctions.git
+	update = merge
+	branch = main
