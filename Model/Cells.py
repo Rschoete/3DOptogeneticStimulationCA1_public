@@ -1,5 +1,6 @@
 from neuron import h
 import numpy as np
+import re, mmap
 
 if __name__ == '__main__':
     import os, sys
@@ -15,11 +16,18 @@ if __name__ == '__main__':
 from Functions.globalFunctions.utils import _Rx, _Ry, _Rz
 from matplotlib import use as mpluse
 
+morphocelltype ={
+    '990803': 'SP_PC','050921AM2':'SP_PC','mpg141017_a1-2_idC':'SP_PC', 'mpg141208_B_idA':'SP_PC', 'mpg141209_A_idA':'SP_PC', 'mpg141209_B_idA':'SP_PC','mpg141215_A_idA':'SP_PC','mpg141216_A_idA':'SP_PC','mpg141217_A_idB':'SP_PC','mpg150305_A_idB':'SP_PC','oh140521_B0_Rat_idA':'SP_PC','oh140521_B0_Rat_idC':'SP_PC','oh140807_A0_idA':'SP_PC','oh140807_A0_idB':'SP_PC','oh140807_A0_idC':'SP_PC','oh140807_A0_idF':'SP_PC','oh140807_A0_idG':'SP_PC','oh140807_A0_idH':'SP_PC','oh140807_A0_idJ':'SP_PC','010710HP2': 'SP_Ivy','011017HP2': 'SO_OLM','011023HP2': 'SO_BS','011127HP1': 'SLM_PPA','031031AM1': 'SP_CCKBC','060314AM2': 'SP_PVBC','970509HP2': 'SO_Tri','970627BHP1': 'SP_PVBC','970717D': 'SP_Ivy','970911C': 'SP_AA','971114B': 'SO_Tri','980120A': 'SO_BP','980513B': 'SP_BS','990111HP2': 'SP_PVBC','990611HP2': 'SR_SCA','990827IN5HP3': 'SR_IS1',
+}
+
 class NeuronTemplate:
-    def __init__ (self,templatepath, templatename, morphologylocation = './Model/morphologies',ID=0,ty=0,col=0, phi = 0, theta = 0, insert_extracellular = False, set_pointer_xtra = False):
+    def __init__ (self,templatepath, templatename, replace_axon = True, celltype = None, morphology = None, morphologylocation = './Model/morphologies',ID=0,ty=0,col=0, phi = 0, theta = 0, insert_extracellular = False, set_pointer_xtra = False):
         self.templatepath = templatepath
         self.templatename = templatename
         self.morphologylocation = morphologylocation
+        self.morphology = morphology
+        self.celltype = celltype
+        self.replace_axon = str(replace_axon).lower()
         self.ID=ID
         self.ty=ty
         self.col=col
@@ -28,8 +36,9 @@ class NeuronTemplate:
         self.insert_extracellular = insert_extracellular
         self.set_pointer_xtra = set_pointer_xtra
     def load_template(self):
+        self.assign_MorphandCelltype()
         h.load_file(self.templatepath) #Load cell info
-        self.template = getattr(h,self.templatename)(self.morphologylocation) # initial cell
+        self.template = getattr(h,self.templatename)(self.replace_axon,self.morphologylocation) # initial cell
     def move_attributes(self):
         for x in self.template.__dir__():
             if x != '__class__':
@@ -72,8 +81,16 @@ class NeuronTemplate:
                 for seg in sec:
                     xyz_seg = [np.interp(seg.x,arcl,coors) for coors in pt3ds]
                     seg.x_xtra, seg.y_xtra, seg.z_xtra = xyz_seg
+    def assign_MorphandCelltype(self):
+        #https://stackoverflow.com/questions/31019854/typeerror-cant-use-a-string-pattern-on-a-bytes-like-object-in-re-findall
+        with open(self.templatepath, 'r') as f:
+            data = mmap.mmap(f.fileno(),0,access=mmap.ACCESS_READ).read().decode("utf-8")
+            p = re.compile(r'load_morphology\("morphologies", .*\)')
+            self.morphology = re.findall(r' (".*[(.asc)]")',p.search(data).group(0))[0][1:-5]
+        self.celltype = morphocelltype[self.morphology]
+
 class CA1_PC_cAC_sig5(NeuronTemplate):
-    def __init__ (self, **kwargs):
+    def __init__ (self,**kwargs):
         super().__init__(templatepath = './Model/cell_seed4_0-pyr-04.hoc', templatename = 'CA1_PC_cAC_sig5',**kwargs)
         self.load_template()
         self.move_attributes()
@@ -113,7 +130,10 @@ class CA1_PC_cAC_sig5(NeuronTemplate):
                 self.apicalTuft.append(x)
             if any([y in str(x) for y in obliques]):
                 self.apical_obliques.append(x)
-    def sec_plot(self,ax):
+    def sec_plot(self,ax=None):
+        if ax is None:
+            fig = plt.figure()
+            ax = plt.subplot(111,projection='3d')
         global hShape_flag
         if not hShape_flag:
             h.Shape(False)
@@ -195,7 +215,10 @@ class CA1_PC_cAC_sig6(NeuronTemplate):
                 self.apicalTuft.append(x)
             if any([y in str(x) for y in obliques]):
                 self.apical_obliques.append(x)
-    def sec_plot(self,ax):
+    def sec_plot(self,ax=None):
+        if ax is None:
+            fig = plt.figure()
+            ax = plt.subplot(111,projection='3d')
         global hShape_flag
         if not hShape_flag:
             h.Shape(False)
@@ -236,6 +259,515 @@ class CA1_PC_cAC_sig6(NeuronTemplate):
         ax.legend(frameon=False)
         return ax
 
+class bACnoljp8(NeuronTemplate):
+    def __init__ (self,**kwargs):
+        super().__init__(templatepath = './Model/cell_seed1_0-bac-10.hoc', templatename = 'bACnoljp8',**kwargs)
+        self.load_template()
+        self.move_attributes()
+        self.make_lists()
+        if self.insert_extracellular:
+            self.insertExtracellular()
+    def __str__ (self):
+        try:
+            return f'compartCell_{self.__class__.__name__}_{self.ID}'
+        except: return 'compartCell%d'%self.ID
+    def __repr__ (self):
+        return self.__str__()
+    def make_lists(self):
+        self.allsec = []
+        self.alldend = []
+        self.apicalTrunk = []
+        apicalTrunk = [f'apic[{i}]' for i in [0,8,9,11,13,19,21,23,27,31,35]]
+
+        self.apicalTrunk_ext = []
+        apicalTrunk_ext = apicalTrunk+[f'apic[{i}]' for i in [36,40,53,61]]
+
+        self.apicalTuft = []
+        apicalTuft = [f'apic[{i}]' for i in [37,38,39,41,42,43,44,45,46,47,48,49,50,51,52,54,55,56,57,58,59,60,61,62,63,64,65,66,67]]
+
+        self.apical_obliques = []
+        obliques = [f'apic[{i}]' for i in [1,2,3,4,5,6,7,10,12,14,15,16,17,18,20,22,24,25,26,28,29,30,32,33,34,68,69,70,71,72,73,74,75,76,77,78]]
+
+        for x in self.all:
+            self.allsec.append(x)
+            if (not 'soma' in str(x)) and (not 'axon' in str(x)):
+                self.alldend.append(x)
+            if any([y in str(x) for y in apicalTrunk]):
+                self.apicalTrunk.append(x)
+            if any([y in str(x) for y in apicalTrunk_ext]):
+                self.apicalTrunk_ext.append(x)
+            if any([y in str(x) for y in apicalTuft]):
+                self.apicalTuft.append(x)
+            if any([y in str(x) for y in obliques]):
+                self.apical_obliques.append(x)
+    def sec_plot(self,ax=None):
+        if ax is None:
+            fig = plt.figure()
+            ax = plt.subplot(111,projection='3d')
+        global hShape_flag
+        if not hShape_flag:
+            h.Shape(False)
+            hShape_flag = True
+        soma_pos = np.array([[self.soma[0].x3d(i),self.soma[0].y3d(i),self.soma[0].z3d(i)] for i in range(self.soma[0].n3d())])
+        soma_pos = np.mean(soma_pos,axis=0)
+        self.move_Cell(-soma_pos)
+
+        colorlist = []
+        colorkeyval = {'soma':'tab:red', 'axon':'tomato','apical trunk':'tab:blue','apical trunk ext':'royalblue', 'apical tuft': 'tab:green','apical obliques': 'tab:cyan', 'basal dendrites': 'tab:olive', 'unclassified':[0,0,0]}
+        for sec in self.allsec:
+            for seg in sec:
+                if 'soma' in str(sec):
+                    colorlist.append(colorkeyval['soma'])
+                elif 'axon' in str(sec):
+                    colorlist.append(colorkeyval['axon'])
+                elif sec in self.apicalTrunk:
+                    colorlist.append(colorkeyval['apical trunk'])
+                elif sec in self.apicalTrunk_ext:
+                    colorlist.append(colorkeyval['apical trunk ext'])
+                elif sec in self.apicalTuft:
+                    colorlist.append(colorkeyval['apical tuft'])
+                elif sec in self.apical_obliques:
+                    colorlist.append(colorkeyval['apical obliques'])
+                elif 'dend' in str(sec):
+                    colorlist.append(colorkeyval['basal dendrites'])
+                else:
+                    colorlist.append([0,0,0])
+        mphv2.shapeplot(h,ax,sections = self.allsec,cvals =colorlist,cb_flag=False,clim=[0,0])
+        ax.set_title('sec plot')
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+        ax.grid(visible=None)
+        ax.axis('off')
+        for k,v in colorkeyval.items():
+            ax.plot(np.nan,np.nan,np.nan,label=k,color=v)
+        ax.legend(frameon=False)
+        return ax
+
+class cNACnoljp1(NeuronTemplate):
+    def __init__ (self,**kwargs):
+        super().__init__(templatepath = './Model/cell_seed1_0-cnac-04.hoc', templatename = 'cNACnoljp1',**kwargs)
+        self.load_template()
+        self.move_attributes()
+        self.make_lists()
+        if self.insert_extracellular:
+            self.insertExtracellular()
+    def __str__ (self):
+        try:
+            return f'compartCell_{self.__class__.__name__}_{self.ID}'
+        except: return 'compartCell%d'%self.ID
+    def __repr__ (self):
+        return self.__str__()
+    def make_lists(self):
+        self.allsec = []
+        self.alldend = []
+        self.apicalTrunk = []
+        apicalTrunk = [f'apic[{i}]' for i in [0,8,9,11,13,19,21,23,27,31,35]]
+
+        self.apicalTrunk_ext = []
+        apicalTrunk_ext = apicalTrunk+[f'apic[{i}]' for i in [36,40,53,61]]
+
+        self.apicalTuft = []
+        apicalTuft = [f'apic[{i}]' for i in [37,38,39,41,42,43,44,45,46,47,48,49,50,51,52,54,55,56,57,58,59,60,61,62,63,64,65,66,67]]
+
+        self.apical_obliques = []
+        obliques = [f'apic[{i}]' for i in [1,2,3,4,5,6,7,10,12,14,15,16,17,18,20,22,24,25,26,28,29,30,32,33,34,68,69,70,71,72,73,74,75,76,77,78]]
+
+        for x in self.all:
+            self.allsec.append(x)
+            if (not 'soma' in str(x)) and (not 'axon' in str(x)):
+                self.alldend.append(x)
+            if any([y in str(x) for y in apicalTrunk]):
+                self.apicalTrunk.append(x)
+            if any([y in str(x) for y in apicalTrunk_ext]):
+                self.apicalTrunk_ext.append(x)
+            if any([y in str(x) for y in apicalTuft]):
+                self.apicalTuft.append(x)
+            if any([y in str(x) for y in obliques]):
+                self.apical_obliques.append(x)
+    def sec_plot(self,ax=None):
+        if ax is None:
+            fig = plt.figure()
+            ax = plt.subplot(111,projection='3d')
+        global hShape_flag
+        if not hShape_flag:
+            h.Shape(False)
+            hShape_flag = True
+        soma_pos = np.array([[self.soma[0].x3d(i),self.soma[0].y3d(i),self.soma[0].z3d(i)] for i in range(self.soma[0].n3d())])
+        soma_pos = np.mean(soma_pos,axis=0)
+        self.move_Cell(-soma_pos)
+
+        colorlist = []
+        colorkeyval = {'soma':'tab:red', 'axon':'tomato','apical trunk':'tab:blue','apical trunk ext':'royalblue', 'apical tuft': 'tab:green','apical obliques': 'tab:cyan', 'basal dendrites': 'tab:olive', 'unclassified':[0,0,0]}
+        for sec in self.allsec:
+            for seg in sec:
+                if 'soma' in str(sec):
+                    colorlist.append(colorkeyval['soma'])
+                elif 'axon' in str(sec):
+                    colorlist.append(colorkeyval['axon'])
+                elif sec in self.apicalTrunk:
+                    colorlist.append(colorkeyval['apical trunk'])
+                elif sec in self.apicalTrunk_ext:
+                    colorlist.append(colorkeyval['apical trunk ext'])
+                elif sec in self.apicalTuft:
+                    colorlist.append(colorkeyval['apical tuft'])
+                elif sec in self.apical_obliques:
+                    colorlist.append(colorkeyval['apical obliques'])
+                elif 'dend' in str(sec):
+                    colorlist.append(colorkeyval['basal dendrites'])
+                else:
+                    colorlist.append([0,0,0])
+        mphv2.shapeplot(h,ax,sections = self.allsec,cvals =colorlist,cb_flag=False,clim=[0,0])
+        ax.set_title('sec plot')
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+        ax.grid(visible=None)
+        ax.axis('off')
+        for k,v in colorkeyval.items():
+            ax.plot(np.nan,np.nan,np.nan,label=k,color=v)
+        ax.legend(frameon=False)
+        return ax
+
+class bACnoljp7(NeuronTemplate):
+    def __init__ (self,**kwargs):
+        super().__init__(templatepath = './Model/cell_seed2_0-bac-06.hoc', templatename = 'bACnoljp7',**kwargs)
+        self.load_template()
+        self.move_attributes()
+        self.make_lists()
+        if self.insert_extracellular:
+            self.insertExtracellular()
+    def __str__ (self):
+        try:
+            return f'compartCell_{self.__class__.__name__}_{self.ID}'
+        except: return 'compartCell%d'%self.ID
+    def __repr__ (self):
+        return self.__str__()
+    def make_lists(self):
+        self.allsec = []
+        self.alldend = []
+        self.apicalTrunk = []
+        apicalTrunk = [f'apic[{i}]' for i in [0,8,9,11,13,19,21,23,27,31,35]]
+
+        self.apicalTrunk_ext = []
+        apicalTrunk_ext = apicalTrunk+[f'apic[{i}]' for i in [36,40,53,61]]
+
+        self.apicalTuft = []
+        apicalTuft = [f'apic[{i}]' for i in [37,38,39,41,42,43,44,45,46,47,48,49,50,51,52,54,55,56,57,58,59,60,61,62,63,64,65,66,67]]
+
+        self.apical_obliques = []
+        obliques = [f'apic[{i}]' for i in [1,2,3,4,5,6,7,10,12,14,15,16,17,18,20,22,24,25,26,28,29,30,32,33,34,68,69,70,71,72,73,74,75,76,77,78]]
+
+        for x in self.all:
+            self.allsec.append(x)
+            if (not 'soma' in str(x)) and (not 'axon' in str(x)):
+                self.alldend.append(x)
+            if any([y in str(x) for y in apicalTrunk]):
+                self.apicalTrunk.append(x)
+            if any([y in str(x) for y in apicalTrunk_ext]):
+                self.apicalTrunk_ext.append(x)
+            if any([y in str(x) for y in apicalTuft]):
+                self.apicalTuft.append(x)
+            if any([y in str(x) for y in obliques]):
+                self.apical_obliques.append(x)
+    def sec_plot(self,ax=None):
+        if ax is None:
+            fig = plt.figure()
+            ax = plt.subplot(111,projection='3d')
+        global hShape_flag
+        if not hShape_flag:
+            h.Shape(False)
+            hShape_flag = True
+        soma_pos = np.array([[self.soma[0].x3d(i),self.soma[0].y3d(i),self.soma[0].z3d(i)] for i in range(self.soma[0].n3d())])
+        soma_pos = np.mean(soma_pos,axis=0)
+        self.move_Cell(-soma_pos)
+
+        colorlist = []
+        colorkeyval = {'soma':'tab:red', 'axon':'tomato','apical trunk':'tab:blue','apical trunk ext':'royalblue', 'apical tuft': 'tab:green','apical obliques': 'tab:cyan', 'basal dendrites': 'tab:olive', 'unclassified':[0,0,0]}
+        for sec in self.allsec:
+            for seg in sec:
+                if 'soma' in str(sec):
+                    colorlist.append(colorkeyval['soma'])
+                elif 'axon' in str(sec):
+                    colorlist.append(colorkeyval['axon'])
+                elif sec in self.apicalTrunk:
+                    colorlist.append(colorkeyval['apical trunk'])
+                elif sec in self.apicalTrunk_ext:
+                    colorlist.append(colorkeyval['apical trunk ext'])
+                elif sec in self.apicalTuft:
+                    colorlist.append(colorkeyval['apical tuft'])
+                elif sec in self.apical_obliques:
+                    colorlist.append(colorkeyval['apical obliques'])
+                elif 'dend' in str(sec):
+                    colorlist.append(colorkeyval['basal dendrites'])
+                else:
+                    colorlist.append([0,0,0])
+        mphv2.shapeplot(h,ax,sections = self.allsec,cvals =colorlist,cb_flag=False,clim=[0,0])
+        ax.set_title('sec plot')
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+        ax.grid(visible=None)
+        ax.axis('off')
+        for k,v in colorkeyval.items():
+            ax.plot(np.nan,np.nan,np.nan,label=k,color=v)
+        ax.legend(frameon=False)
+        return ax
+
+class cNACnoljp2(NeuronTemplate):
+    def __init__ (self,**kwargs):
+        super().__init__(templatepath = './Model/cell_seed2_0-cnac-08.hoc', templatename = 'cNACnoljp2',**kwargs)
+        self.load_template()
+        self.move_attributes()
+        self.make_lists()
+        if self.insert_extracellular:
+            self.insertExtracellular()
+    def __str__ (self):
+        try:
+            return f'compartCell_{self.__class__.__name__}_{self.ID}'
+        except: return 'compartCell%d'%self.ID
+    def __repr__ (self):
+        return self.__str__()
+    def make_lists(self):
+        self.allsec = []
+        self.alldend = []
+        self.apicalTrunk = []
+        apicalTrunk = [f'apic[{i}]' for i in [0,8,9,11,13,19,21,23,27,31,35]]
+
+        self.apicalTrunk_ext = []
+        apicalTrunk_ext = apicalTrunk+[f'apic[{i}]' for i in [36,40,53,61]]
+
+        self.apicalTuft = []
+        apicalTuft = [f'apic[{i}]' for i in [37,38,39,41,42,43,44,45,46,47,48,49,50,51,52,54,55,56,57,58,59,60,61,62,63,64,65,66,67]]
+
+        self.apical_obliques = []
+        obliques = [f'apic[{i}]' for i in [1,2,3,4,5,6,7,10,12,14,15,16,17,18,20,22,24,25,26,28,29,30,32,33,34,68,69,70,71,72,73,74,75,76,77,78]]
+
+        for x in self.all:
+            self.allsec.append(x)
+            if (not 'soma' in str(x)) and (not 'axon' in str(x)):
+                self.alldend.append(x)
+            if any([y in str(x) for y in apicalTrunk]):
+                self.apicalTrunk.append(x)
+            if any([y in str(x) for y in apicalTrunk_ext]):
+                self.apicalTrunk_ext.append(x)
+            if any([y in str(x) for y in apicalTuft]):
+                self.apicalTuft.append(x)
+            if any([y in str(x) for y in obliques]):
+                self.apical_obliques.append(x)
+    def sec_plot(self,ax=None):
+        if ax is None:
+            fig = plt.figure()
+            ax = plt.subplot(111,projection='3d')
+        global hShape_flag
+        if not hShape_flag:
+            h.Shape(False)
+            hShape_flag = True
+        soma_pos = np.array([[self.soma[0].x3d(i),self.soma[0].y3d(i),self.soma[0].z3d(i)] for i in range(self.soma[0].n3d())])
+        soma_pos = np.mean(soma_pos,axis=0)
+        self.move_Cell(-soma_pos)
+
+        colorlist = []
+        colorkeyval = {'soma':'tab:red', 'axon':'tomato','apical trunk':'tab:blue','apical trunk ext':'royalblue', 'apical tuft': 'tab:green','apical obliques': 'tab:cyan', 'basal dendrites': 'tab:olive', 'unclassified':[0,0,0]}
+        for sec in self.allsec:
+            for seg in sec:
+                if 'soma' in str(sec):
+                    colorlist.append(colorkeyval['soma'])
+                elif 'axon' in str(sec):
+                    colorlist.append(colorkeyval['axon'])
+                elif sec in self.apicalTrunk:
+                    colorlist.append(colorkeyval['apical trunk'])
+                elif sec in self.apicalTrunk_ext:
+                    colorlist.append(colorkeyval['apical trunk ext'])
+                elif sec in self.apicalTuft:
+                    colorlist.append(colorkeyval['apical tuft'])
+                elif sec in self.apical_obliques:
+                    colorlist.append(colorkeyval['apical obliques'])
+                elif 'dend' in str(sec):
+                    colorlist.append(colorkeyval['basal dendrites'])
+                else:
+                    colorlist.append([0,0,0])
+        mphv2.shapeplot(h,ax,sections = self.allsec,cvals =colorlist,cb_flag=False,clim=[0,0])
+        ax.set_title('sec plot')
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+        ax.grid(visible=None)
+        ax.axis('off')
+        for k,v in colorkeyval.items():
+            ax.plot(np.nan,np.nan,np.nan,label=k,color=v)
+        ax.legend(frameon=False)
+        return ax
+
+class INT_cAC_noljp4(NeuronTemplate):
+    def __init__ (self,**kwargs):
+        super().__init__(templatepath = './Model/cell_seed4_0-cac-06.hoc', templatename = 'INT_cAC_noljp4',**kwargs)
+        self.load_template()
+        self.move_attributes()
+        self.make_lists()
+        if self.insert_extracellular:
+            self.insertExtracellular()
+    def __str__ (self):
+        try:
+            return f'compartCell_{self.__class__.__name__}_{self.ID}'
+        except: return 'compartCell%d'%self.ID
+    def __repr__ (self):
+        return self.__str__()
+    def make_lists(self):
+        self.allsec = []
+        self.alldend = []
+        self.apicalTrunk = []
+        apicalTrunk = [f'apic[{i}]' for i in [0,8,9,11,13,19,21,23,27,31,35]]
+
+        self.apicalTrunk_ext = []
+        apicalTrunk_ext = apicalTrunk+[f'apic[{i}]' for i in [36,40,53,61]]
+
+        self.apicalTuft = []
+        apicalTuft = [f'apic[{i}]' for i in [37,38,39,41,42,43,44,45,46,47,48,49,50,51,52,54,55,56,57,58,59,60,61,62,63,64,65,66,67]]
+
+        self.apical_obliques = []
+        obliques = [f'apic[{i}]' for i in [1,2,3,4,5,6,7,10,12,14,15,16,17,18,20,22,24,25,26,28,29,30,32,33,34,68,69,70,71,72,73,74,75,76,77,78]]
+
+        for x in self.all:
+            self.allsec.append(x)
+            if (not 'soma' in str(x)) and (not 'axon' in str(x)):
+                self.alldend.append(x)
+            if any([y in str(x) for y in apicalTrunk]):
+                self.apicalTrunk.append(x)
+            if any([y in str(x) for y in apicalTrunk_ext]):
+                self.apicalTrunk_ext.append(x)
+            if any([y in str(x) for y in apicalTuft]):
+                self.apicalTuft.append(x)
+            if any([y in str(x) for y in obliques]):
+                self.apical_obliques.append(x)
+    def sec_plot(self,ax=None):
+        if ax is None:
+            fig = plt.figure()
+            ax = plt.subplot(111,projection='3d')
+        global hShape_flag
+        if not hShape_flag:
+            h.Shape(False)
+            hShape_flag = True
+        soma_pos = np.array([[self.soma[0].x3d(i),self.soma[0].y3d(i),self.soma[0].z3d(i)] for i in range(self.soma[0].n3d())])
+        soma_pos = np.mean(soma_pos,axis=0)
+        self.move_Cell(-soma_pos)
+
+        colorlist = []
+        colorkeyval = {'soma':'tab:red', 'axon':'tomato','apical trunk':'tab:blue','apical trunk ext':'royalblue', 'apical tuft': 'tab:green','apical obliques': 'tab:cyan', 'basal dendrites': 'tab:olive', 'unclassified':[0,0,0]}
+        for sec in self.allsec:
+            for seg in sec:
+                if 'soma' in str(sec):
+                    colorlist.append(colorkeyval['soma'])
+                elif 'axon' in str(sec):
+                    colorlist.append(colorkeyval['axon'])
+                elif sec in self.apicalTrunk:
+                    colorlist.append(colorkeyval['apical trunk'])
+                elif sec in self.apicalTrunk_ext:
+                    colorlist.append(colorkeyval['apical trunk ext'])
+                elif sec in self.apicalTuft:
+                    colorlist.append(colorkeyval['apical tuft'])
+                elif sec in self.apical_obliques:
+                    colorlist.append(colorkeyval['apical obliques'])
+                elif 'dend' in str(sec):
+                    colorlist.append(colorkeyval['basal dendrites'])
+                else:
+                    colorlist.append([0,0,0])
+        mphv2.shapeplot(h,ax,sections = self.allsec,cvals =colorlist,cb_flag=False,clim=[0,0])
+        ax.set_title('sec plot')
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+        ax.grid(visible=None)
+        ax.axis('off')
+        for k,v in colorkeyval.items():
+            ax.plot(np.nan,np.nan,np.nan,label=k,color=v)
+        ax.legend(frameon=False)
+        return ax
+
+class INT_cAC_noljp3(NeuronTemplate):
+    def __init__ (self,**kwargs):
+        super().__init__(templatepath = './Model/cell_seed7_0-cac-04.hoc', templatename = 'INT_cAC_noljp3',**kwargs)
+        self.load_template()
+        self.move_attributes()
+        self.make_lists()
+        if self.insert_extracellular:
+            self.insertExtracellular()
+    def __str__ (self):
+        try:
+            return f'compartCell_{self.__class__.__name__}_{self.ID}'
+        except: return 'compartCell%d'%self.ID
+    def __repr__ (self):
+        return self.__str__()
+    def make_lists(self):
+        self.allsec = []
+        self.alldend = []
+        self.apicalTrunk = []
+        apicalTrunk = [f'apic[{i}]' for i in [0,8,9,11,13,19,21,23,27,31,35]]
+
+        self.apicalTrunk_ext = []
+        apicalTrunk_ext = apicalTrunk+[f'apic[{i}]' for i in [36,40,53,61]]
+
+        self.apicalTuft = []
+        apicalTuft = [f'apic[{i}]' for i in [37,38,39,41,42,43,44,45,46,47,48,49,50,51,52,54,55,56,57,58,59,60,61,62,63,64,65,66,67]]
+
+        self.apical_obliques = []
+        obliques = [f'apic[{i}]' for i in [1,2,3,4,5,6,7,10,12,14,15,16,17,18,20,22,24,25,26,28,29,30,32,33,34,68,69,70,71,72,73,74,75,76,77,78]]
+
+        for x in self.all:
+            self.allsec.append(x)
+            if (not 'soma' in str(x)) and (not 'axon' in str(x)):
+                self.alldend.append(x)
+            if any([y in str(x) for y in apicalTrunk]):
+                self.apicalTrunk.append(x)
+            if any([y in str(x) for y in apicalTrunk_ext]):
+                self.apicalTrunk_ext.append(x)
+            if any([y in str(x) for y in apicalTuft]):
+                self.apicalTuft.append(x)
+            if any([y in str(x) for y in obliques]):
+                self.apical_obliques.append(x)
+    def sec_plot(self,ax=None):
+        if ax is None:
+            fig = plt.figure()
+            ax = plt.subplot(111,projection='3d')
+        global hShape_flag
+        if not hShape_flag:
+            h.Shape(False)
+            hShape_flag = True
+        soma_pos = np.array([[self.soma[0].x3d(i),self.soma[0].y3d(i),self.soma[0].z3d(i)] for i in range(self.soma[0].n3d())])
+        soma_pos = np.mean(soma_pos,axis=0)
+        self.move_Cell(-soma_pos)
+
+        colorlist = []
+        colorkeyval = {'soma':'tab:red', 'axon':'tomato','apical trunk':'tab:blue','apical trunk ext':'royalblue', 'apical tuft': 'tab:green','apical obliques': 'tab:cyan', 'basal dendrites': 'tab:olive', 'unclassified':[0,0,0]}
+        for sec in self.allsec:
+            for seg in sec:
+                if 'soma' in str(sec):
+                    colorlist.append(colorkeyval['soma'])
+                elif 'axon' in str(sec):
+                    colorlist.append(colorkeyval['axon'])
+                elif sec in self.apicalTrunk:
+                    colorlist.append(colorkeyval['apical trunk'])
+                elif sec in self.apicalTrunk_ext:
+                    colorlist.append(colorkeyval['apical trunk ext'])
+                elif sec in self.apicalTuft:
+                    colorlist.append(colorkeyval['apical tuft'])
+                elif sec in self.apical_obliques:
+                    colorlist.append(colorkeyval['apical obliques'])
+                elif 'dend' in str(sec):
+                    colorlist.append(colorkeyval['basal dendrites'])
+                else:
+                    colorlist.append([0,0,0])
+        mphv2.shapeplot(h,ax,sections = self.allsec,cvals =colorlist,cb_flag=False,clim=[0,0])
+        ax.set_title('sec plot')
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+        ax.grid(visible=None)
+        ax.axis('off')
+        for k,v in colorkeyval.items():
+            ax.plot(np.nan,np.nan,np.nan,label=k,color=v)
+        ax.legend(frameon=False)
+        return ax
 
 
 def _colorsecs(mylist,seclist,cell):
@@ -285,9 +817,11 @@ if __name__ == '__main__':
     from matplotlib import cm
     import Functions.globalFunctions.ExtracellularField as eF
     mpluse('tkagg')
+    NeuronTemplates = ['CA1_PC_cAC_sig5','CA1_PC_cAC_sig6','bACnoljp8','bACnoljp7','cNACnoljp1','cNACnoljp2','INT_cAC_noljp4','INT_cAC_noljp3']
+
     global hShape_flag
     hShape_flag = False
-    cell = CA1_PC_cAC_sig6()
+    cell = locals()[NeuronTemplates[5]](replace_axon = True)
     cell.insertOptogenetics(cell.apical)
     if not hShape_flag:
         h.Shape(False)
@@ -329,7 +863,7 @@ if __name__ == '__main__':
     fig = plt.figure(figsize=(10,10))
     ax = plt.subplot(111,projection='3d')
     ax = cell.sec_plot(ax)
-    ax.set_title(cell)
+    ax.set_title(cell.celltype)
     ax.set_zlim([-300,300])
     ax.set_xlim([-300,300])
     ax.set_ylim([-200,400])

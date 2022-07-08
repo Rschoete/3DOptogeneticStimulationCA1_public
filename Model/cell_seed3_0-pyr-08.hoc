@@ -19,7 +19,7 @@ proc check_simulator() {
 }
 
 begintemplate CA1_PC_cAC_sig6
-  public init, morphology, geom_nseg_fixed, geom_nsec
+  public init, replace_axon,morphology, geom_nseg_fixed, geom_nsec
   public soma, dend, apic, axon, myelin
   create soma[1], dend[1], apic[1], axon[1], myelin[1]
 
@@ -41,16 +41,20 @@ proc init(/* args: morphology_dir, morphology_name */) {
 
   forall delete_section()
 
-  if(numarg() >= 2) {
-    load_morphology($s1, $s2)
-  } else if (numarg() == 1){
-    load_morphology($s1, "mpg141209_A_idA.asc")
+  if(numarg() >= 3) {
+    load_morphology($s2, $s3)
+  } else if (numarg() == 2){
+    load_morphology($s2, "mpg141209_A_idA.asc")
   } else {
     load_morphology("morphologies", "mpg141209_A_idA.asc")
   }
 
   geom_nseg()
+  if ( strcmp($s1, "true" ) == 0 ) {
     replace_axon()
+  } else {
+    print "not replacing axon"
+  }
   insertChannel()
   biophys()
   re_init_rng()
