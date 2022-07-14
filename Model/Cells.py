@@ -14,6 +14,11 @@ if __name__ == '__main__':
     print(f"add paths: {SCRIPT_DIR}, {os.path.dirname(SCRIPT_DIR)} and {(os.path.dirname(os.path.dirname(SCRIPT_DIR)))} to path")
 
 from Functions.globalFunctions.utils import _Rx, _Ry, _Rz
+import Functions.globalFunctions.morphology_v2 as mphv2
+import matplotlib.pyplot as plt
+import pandas as pd
+import Functions.globalFunctions.utils as utils
+from matplotlib import cm
 from matplotlib import use as mpluse
 
 global hShape_flag
@@ -105,6 +110,19 @@ class NeuronTemplate:
             soma_pos = np.array([[self.soma[0].x3d(i),self.soma[0].y3d(i),self.soma[0].z3d(i)] for i in range(self.soma[0].n3d())])
             soma_pos = np.mean(soma_pos,axis=0)
             self.move_Cell(-soma_pos)
+    def gather_secpos(self,print_flag=False):
+        secpos = {}
+        for sec in self.allsec:
+            sec_name = str(sec).split('.')[-1]
+            xyz = mphv2.get_section_path(h,sec)
+            xyz = np.mean(xyz, axis=0)
+            secpos[sec_name]=xyz
+        secpos = pd.DataFrame(secpos).T.rename(lambda x:['x','y','z'][x], axis = 1)
+        secpos = secpos.applymap(lambda x: utils.signif(x,2))
+        if print_flag:
+            with pd.option_context('display.max_rows', None, 'display.max_columns', None):  # more options can be specified also
+                print(secpos)
+        return secpos
 
 class CA1_PC_cAC_sig5(NeuronTemplate):
     def __init__ (self,**kwargs):
@@ -845,12 +863,6 @@ if __name__ == '__main__':
         # above file should not exist locally -> load windows compiled nrnmech
         h.nrn_load_dll("./Model/Mods/nrnmech.dll")
         print("succes load nrnmech.dll")
-
-    import Functions.globalFunctions.morphology_v2 as mphv2
-    import matplotlib.pyplot as plt
-    import pandas as pd
-    import Functions.globalFunctions.utils as utils
-    from matplotlib import cm
     import Functions.globalFunctions.ExtracellularField as eF
     mpluse('tkagg')
 
@@ -862,28 +874,12 @@ if __name__ == '__main__':
         hShape_flag = True
 
     #Gather sec positions before movement
-    secpos = {}
-    for sec in cell.all:
-        sec_name = str(sec).split('.')[-1]
-        xyz = mphv2.get_section_path(h,sec)
-        xyz = np.mean(xyz, axis=0)
-        secpos[sec_name]=xyz
-    secpos = pd.DataFrame(secpos).T.rename(lambda x:['x','y','z'][x], axis = 1)
-    secpos = secpos.applymap(lambda x: utils.signif(x,2))
+    secpos = cell.gather_secpos()
     cell.move_Cell(-secpos.loc[['soma[0]']].to_numpy()[0]) # by default included
     cell.rotate_Cell(theta = np.pi/180*30)
 
     # gather new sec positions
-    secpos2 = {}
-    for sec in cell.all:
-        sec_name = str(sec).split('.')[-1]
-        xyz = mphv2.get_section_path(h,sec)
-        xyz = np.mean(xyz, axis=0)
-        secpos2[sec_name]=xyz
-    secpos2 = pd.DataFrame(secpos2).T.rename(lambda x:['x','y','z'][x], axis = 1)
-    secpos2 = secpos2.applymap(lambda x: utils.signif(x,2))
-    with pd.option_context('display.max_rows', None, 'display.max_columns', None):  # more options can be specified also
-        print(secpos2)
+    secpos2 = cell.gather_secpos()
     #combine in single dataframe
     for k in ['x','y','z']:
         secpos[k+'2'] = secpos2[k]
