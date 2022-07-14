@@ -16,17 +16,18 @@ if __name__ == '__main__':
 from Functions.globalFunctions.utils import _Rx, _Ry, _Rz
 from matplotlib import use as mpluse
 
+global hShape_flag
+
 morphocelltype ={
     '990803': 'SP_PC','050921AM2':'SP_PC','mpg141017_a1-2_idC':'SP_PC', 'mpg141208_B_idA':'SP_PC', 'mpg141209_A_idA':'SP_PC', 'mpg141209_B_idA':'SP_PC','mpg141215_A_idA':'SP_PC','mpg141216_A_idA':'SP_PC','mpg141217_A_idB':'SP_PC','mpg150305_A_idB':'SP_PC','oh140521_B0_Rat_idA':'SP_PC','oh140521_B0_Rat_idC':'SP_PC','oh140807_A0_idA':'SP_PC','oh140807_A0_idB':'SP_PC','oh140807_A0_idC':'SP_PC','oh140807_A0_idF':'SP_PC','oh140807_A0_idG':'SP_PC','oh140807_A0_idH':'SP_PC','oh140807_A0_idJ':'SP_PC','010710HP2': 'SP_Ivy','011017HP2': 'SO_OLM','011023HP2': 'SO_BS','011127HP1': 'SLM_PPA','031031AM1': 'SP_CCKBC','060314AM2': 'SP_PVBC','970509HP2': 'SO_Tri','970627BHP1': 'SP_PVBC','970717D': 'SP_Ivy','970911C': 'SP_AA','971114B': 'SO_Tri','980120A': 'SO_BP','980513B': 'SP_BS','990111HP2': 'SP_PVBC','990611HP2': 'SR_SCA','990827IN5HP3': 'SR_IS1',
 }
+NeuronTemplates = ['CA1_PC_cAC_sig5','CA1_PC_cAC_sig6','bACnoljp8','bACnoljp7','cNACnoljp1','cNACnoljp2','INT_cAC_noljp4','INT_cAC_noljp3']
 
 class NeuronTemplate:
-    def __init__ (self,templatepath, templatename, replace_axon = True, celltype = None, morphology = None, morphologylocation = './Model/morphologies',ID=0,ty=0,col=0, phi = 0, theta = 0, insert_extracellular = False, set_pointer_xtra = False):
+    def __init__ (self,templatepath, templatename, replace_axon = True, morphologylocation = './Model/morphologies',ID=0,ty=0,col=0, phi = 0, theta = 0, insert_extracellular = False, set_pointer_xtra = False, movesomatoorigin = True):
         self.templatepath = templatepath
         self.templatename = templatename
         self.morphologylocation = morphologylocation
-        self.morphology = morphology
-        self.celltype = celltype
         self.replace_axon = str(replace_axon).lower()
         self.ID=ID
         self.ty=ty
@@ -35,6 +36,7 @@ class NeuronTemplate:
         self.theta = theta
         self.insert_extracellular = insert_extracellular
         self.set_pointer_xtra = set_pointer_xtra
+        self.movesomatoorigin = movesomatoorigin
     def load_template(self):
         self.assign_MorphandCelltype()
         h.load_file(self.templatepath) #Load cell info
@@ -50,12 +52,18 @@ class NeuronTemplate:
                 xyz = np.array([section.x3d(i),section.y3d(i),section.z3d(i)])
                 xyz = xyz+rt
                 h.pt3dchange(i, xyz[0], xyz[1], xyz[2], section.diam3d(i), sec=section)
-    def rotate_Cell(self):
-        for section in self.allsec:
-            for i in range(section.n3d()):
-                xyz = np.array([section.x3d(i),section.y3d(i),section.z3d(i)])
-                xyz = np.dot(np.dot(_Rz(self.phi),_Ry(self.theta)),xyz[:,None])
-                h.pt3dchange(i, xyz[0][0], xyz[1][0], xyz[2][0], section.diam3d(i), sec=section)
+    def rotate_Cell(self,phi=0,theta=0,init_rotation=False):
+
+        if init_rotation:
+            phi = self.phi
+            theta = self.theta
+        if phi!=0 or theta!=0:
+            for section in self.allsec:
+                for i in range(section.n3d()):
+                    xyz = np.array([section.x3d(i),section.y3d(i),section.z3d(i)])
+                    xyz = np.dot(np.dot(_Rz(phi),_Ry(theta)),xyz[:,None])
+                    h.pt3dchange(i, xyz[0][0], xyz[1][0], xyz[2][0], section.diam3d(i), sec=section)
+
     def insertExtracellular(self):
         for sec in self.allsec:
             sec.insert('extracellular')
@@ -88,6 +96,15 @@ class NeuronTemplate:
             p = re.compile(r'load_morphology\("morphologies", .*\)')
             self.morphology = re.findall(r' (".*[(.asc)]")',p.search(data).group(0))[0][1:-5]
         self.celltype = morphocelltype[self.morphology]
+    def moveSomaToOrigin(self):
+        if self.movesomatoorigin:
+            global hShape_flag
+            if not hShape_flag:
+                h.Shape(False)
+                hShape_flag = True
+            soma_pos = np.array([[self.soma[0].x3d(i),self.soma[0].y3d(i),self.soma[0].z3d(i)] for i in range(self.soma[0].n3d())])
+            soma_pos = np.mean(soma_pos,axis=0)
+            self.move_Cell(-soma_pos)
 
 class CA1_PC_cAC_sig5(NeuronTemplate):
     def __init__ (self,**kwargs):
@@ -95,6 +112,8 @@ class CA1_PC_cAC_sig5(NeuronTemplate):
         self.load_template()
         self.move_attributes()
         self.make_lists()
+        self.moveSomaToOrigin()
+        self.rotate_Cell(init_rotation=True)
         if self.insert_extracellular:
             self.insertExtracellular()
     def __str__ (self):
@@ -180,6 +199,8 @@ class CA1_PC_cAC_sig6(NeuronTemplate):
         self.load_template()
         self.move_attributes()
         self.make_lists()
+        self.moveSomaToOrigin()
+        self.rotate_Cell(init_rotation=True)
         if self.insert_extracellular:
             self.insertExtracellular()
     def __str__ (self):
@@ -265,6 +286,9 @@ class bACnoljp8(NeuronTemplate):
         self.load_template()
         self.move_attributes()
         self.make_lists()
+        self.moveSomaToOrigin()
+        self.rotate_Cell(init_rotation=True)
+
         if self.insert_extracellular:
             self.insertExtracellular()
     def __str__ (self):
@@ -350,6 +374,9 @@ class cNACnoljp1(NeuronTemplate):
         self.load_template()
         self.move_attributes()
         self.make_lists()
+        self.moveSomaToOrigin()
+        self.rotate_Cell(init_rotation=True)
+
         if self.insert_extracellular:
             self.insertExtracellular()
     def __str__ (self):
@@ -435,6 +462,8 @@ class bACnoljp7(NeuronTemplate):
         self.load_template()
         self.move_attributes()
         self.make_lists()
+        self.moveSomaToOrigin()
+        self.rotate_Cell(init_rotation=True)
         if self.insert_extracellular:
             self.insertExtracellular()
     def __str__ (self):
@@ -520,6 +549,9 @@ class cNACnoljp2(NeuronTemplate):
         self.load_template()
         self.move_attributes()
         self.make_lists()
+        self.moveSomaToOrigin()
+        self.rotate_Cell(init_rotation=True)
+        
         if self.insert_extracellular:
             self.insertExtracellular()
     def __str__ (self):
@@ -605,6 +637,8 @@ class INT_cAC_noljp4(NeuronTemplate):
         self.load_template()
         self.move_attributes()
         self.make_lists()
+        self.moveSomaToOrigin()
+        self.rotate_Cell(init_rotation=True)
         if self.insert_extracellular:
             self.insertExtracellular()
     def __str__ (self):
@@ -690,6 +724,8 @@ class INT_cAC_noljp3(NeuronTemplate):
         self.load_template()
         self.move_attributes()
         self.make_lists()
+        self.moveSomaToOrigin()
+        self.rotate_Cell(init_rotation=True)
         if self.insert_extracellular:
             self.insertExtracellular()
     def __str__ (self):
@@ -817,11 +853,9 @@ if __name__ == '__main__':
     from matplotlib import cm
     import Functions.globalFunctions.ExtracellularField as eF
     mpluse('tkagg')
-    NeuronTemplates = ['CA1_PC_cAC_sig5','CA1_PC_cAC_sig6','bACnoljp8','bACnoljp7','cNACnoljp1','cNACnoljp2','INT_cAC_noljp4','INT_cAC_noljp3']
 
-    global hShape_flag
     hShape_flag = False
-    cell = locals()[NeuronTemplates[5]](replace_axon = True)
+    cell = locals()[NeuronTemplates[4]](replace_axon = True)
     cell.insertOptogenetics(cell.apical)
     if not hShape_flag:
         h.Shape(False)
@@ -836,9 +870,8 @@ if __name__ == '__main__':
         secpos[sec_name]=xyz
     secpos = pd.DataFrame(secpos).T.rename(lambda x:['x','y','z'][x], axis = 1)
     secpos = secpos.applymap(lambda x: utils.signif(x,2))
-    cell.move_Cell(-secpos.loc[['soma[0]']].to_numpy()[0])
-    cell.theta = 30*np.pi/180
-    cell.rotate_Cell()
+    cell.move_Cell(-secpos.loc[['soma[0]']].to_numpy()[0]) # by default included
+    cell.rotate_Cell(theta = np.pi/180*30)
 
     # gather new sec positions
     secpos2 = {}
