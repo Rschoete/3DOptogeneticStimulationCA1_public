@@ -1,5 +1,6 @@
 : $Id: xtra.mod,v 1.4 2014/08/18 23:15:25 ted Exp ted $
 : 2018/05/20 Modified by Aman Aberra
+: how to use https://senselab.med.yale.edu/ModelDB/showmodel?model=241165&file=/AberraEtAl2018/interpCoordinates.hoc#tabs-2
 
 NEURON {
 	SUFFIX xtra
@@ -33,6 +34,8 @@ ASSIGNED {
 }
 
 INITIAL {
+	estim = 0
+	ostim = 0
 	ex = estim*es
 	ox = ostim*os
 }
