@@ -264,6 +264,7 @@ class NeuronTemplate:
         # if hdistance selected use h.distance method from neuron (distance along path between two segments)
         # alse source_hdistance needs to be provided. i.e., a cell segment
         values = []
+        seglist = []
         if seclist=='all':
             seclist = self.allsec
         if method.lower()=='3d':
@@ -274,16 +275,18 @@ class NeuronTemplate:
                 for seg in sec:
                     xyz_seg = [np.interp(seg.x,arcl,coors) for coors in pt3ds]
                     values.append(distribution(xyz_seg))
+                    seglist.append(seg)
         elif method.lower()=='hdistance':
             if source_hdistance is not None:
                 for sec in seclist:
                     for seg in sec:
                         values.append(distribution(h.distance(source_hdistance,seg)))
+                        seglist.append(seg)
             else:
                 raise ValueError('define source_hdistance')
         else:
             raise ValueError('possible methods are 3d or hdistance')
-        return values
+        return seglist, values
 
 
 class CA1_PC_cAC_sig5(NeuronTemplate):
@@ -754,9 +757,10 @@ if __name__ == '__main__':
     a, b = (-1000 - 0)/scale, (1000 - 0)/scale
     source = [300,300,300]
     rv = truncnorm(a,b,0,scale)
-    distribution = lambda seg_xyz: 5*rv.pdf(np.linalg.norm(np.array(seg_xyz)-source))/rv.pdf(0)
-    valueschr2 = cell.distribute_mechvalue(distribution)
-    swv,swov = cell.updateMechValue('all',valueschr2,mech = 'gchr2bar_chr2h134r')
+    #distribution = lambda seg_xyz: 5*rv.pdf(np.linalg.norm(np.array(seg_xyz)-source))/rv.pdf(0)
+    distribution = lambda x: 5
+    seglist,valueschr2 = cell.distribute_mechvalue(distribution)
+    swv,swov = cell.updateMechValue(seglist,valueschr2,mech = 'gchr2bar_chr2h134r')
     print(swov)
 
     fig = plt.figure(figsize = (16,10))
