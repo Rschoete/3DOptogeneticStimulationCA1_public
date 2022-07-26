@@ -241,6 +241,52 @@ class NeuronTemplate:
                                     print(E)
                             else:
                                 raise E
+
+    def updateMechValue(self,seglist,values,mech):
+        segwvalue = []
+        segwovalue = []
+        if seglist=='all':
+            seglist = [seg for sec in self.allsec for seg in sec]
+        if isinstance(values,(float,int)):
+            values = len(seglist)*[values]
+        if len(seglist)!=len(values):
+            raise ValueError('seglist and values need to be same length or values needs to be float or integer')
+        for seg, value in zip(seglist,values):
+            if hasattr(seg,mech.rsplit('_',1)[-1]):
+                setattr(seg,mech,value)
+                segwvalue.append((str(seg),value))
+            else:
+                segwovalue.append(str(seg))
+
+        return segwvalue,segwovalue
+
+    def distribute_mechvalue(self,distribution,seclist='all',method='3d', source_hdistance = None):
+        # method: '3d', 'hdistance' 3d positions or via h.distance
+        # if hdistance selected use h.distance method from neuron (distance along path between two segments)
+        # alse source_hdistance needs to be provided. i.e., a cell segment
+        values = []
+        if seclist=='all':
+            seclist = self.allsec
+        if method.lower()=='3d':
+            for sec in seclist:
+                pt3ds = [[getattr(sec,x)(i) for i in range(sec.n3d())] for x in ['x3d', 'y3d', 'z3d']]
+                arcl = np.array([sec.arc3d(i) for i in range(sec.n3d())])
+                arcl = arcl/arcl[-1] #normalize
+                for seg in sec:
+                    xyz_seg = [np.interp(seg.x,arcl,coors) for coors in pt3ds]
+                    values.append(distribution(xyz_seg))
+        elif method.lower()=='hdistance':
+            if source_hdistance is not None:
+                for sec in seclist:
+                    for seg in sec:
+                        values.append(distribution(h.distance(source_hdistance,seg)))
+            else:
+                raise ValueError('define source_hdistance')
+        else:
+            raise ValueError('possible methods are 3d or hdistance')
+        return values
+
+
 class CA1_PC_cAC_sig5(NeuronTemplate):
     '''
     CA1 pyramidal cell
@@ -626,14 +672,14 @@ if __name__ == '__main__':
     mpluse('tkagg')
 
     #stim settings
-    delay=100; dur=500-1e-6; amp=3000; prf=10/1000; dc=0.1
+    delay=100; dur=100-1e-6; amp=3000; prf=10/1000; dc=0.1
     # sim settings
-    simdur = 1000 #ms
+    simdur = 300 #ms
     dt = 0.025 #ms
 
     hShape_flag = False
     cell = locals()[NeuronTemplates[4]](replace_axon = True)
-    cell.insertOptogenetics(cell.allsec)
+    cell.insertOptogenetics(cell.alldend)
 
     if not hShape_flag:
         h.Shape(False)
@@ -702,6 +748,17 @@ if __name__ == '__main__':
     # apply field to Neuron
     cell.updateXtraCoors()
     attach_flag,totalos = eF.attach_stim(cell.allsec, field, structured, netpyne=False, stimtype='optical', phi = np.pi/2,xT = [0,0,-secpos['y2'].min()])
+
+    #update chr2 gbar distribution
+    from scipy.stats import truncnorm
+    scale = 200
+    a, b = (-1000 - 0)/scale, (1000 - 0)/scale
+    source = [300,300,300]
+    rv = truncnorm(a,b,0,scale)
+    distribution = lambda seg_xyz: 5*rv.pdf(np.linalg.norm(np.array(seg_xyz)-source))/rv.pdf(0)
+    valueschr2 = cell.distribute_mechvalue(distribution)
+    swv,swov = cell.updateMechValue('all',valueschr2,mech = 'gchr2bar_chr2h134r')
+    print(swov)
 
     fig = plt.figure(figsize = (16,10))
     ax = plt.subplot(131,projection='3d')
@@ -778,8 +835,8 @@ if __name__ == '__main__':
     allv_traces = []
     names = []
     t = h.Vector().record(h._ref_t,Dt)
-    v_s = h.Vector().record(cell.soma[0](0.5)._ref_v,Dt)
-    i_chr2 = h.Vector().record(cell.soma[0](0.5)._ref_i_chr2h134r,Dt)
+    v_s = h.Vector().record(cell.dend[0](0.5)._ref_v,Dt)
+    i_chr2 = h.Vector().record(cell.dend[0](0.5)._ref_i_chr2h134r,Dt)
     for x in cell.allsec:
         allv_traces.append(h.Vector().record(x(0.5)._ref_v,Dt))
         names.append(str(x))
