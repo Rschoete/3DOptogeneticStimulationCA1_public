@@ -191,10 +191,17 @@ class analysesOptions(Dict):
 
     """
     def __init__(self):
-        self.shapeplots = [dict(cvals_type='os',colorscale='log10'),dict(cvals_type='gchr2bar_chr2h134r')]
         self.sec_plot_flag = True
         self.print_secpos = True
+
+        self.shapeplots = [dict(cvals_type='os',colorscale='log10'),dict(cvals_type='gchr2bar_chr2h134r')]
+        self.shapeplot_axsettings = {}
+        self.save_shapeplots = False
+
         self.recordTraces = {'v':dict(sec='all', loc = 0.5, var='v'),'ichr2':dict(sec='all', loc=0.5, var = 'i', mech='chr2h134r')}
+        self.tracesplot_axsettings = {}
+        self.save_traces = False
+
 
 
 
