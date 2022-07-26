@@ -2,7 +2,6 @@ import os
 import sys
 import time
 import random
-from matplotlib.pyplot import tight_layout
 import numpy as np
 from neuron import h
 if os.path.exists("./Model/Mods/x86_64/libnrnmech.so"):
@@ -32,7 +31,9 @@ def optogeneticStimulation(input, verbose = False):
     rng = np.random.seed(int(seed))
     random.seed(int(seed))
 
-    #Load cell
+    # Cell setup
+    # ----------------------------------------------------------
+    ##Load cell
     if input.cellsopt.neurontemplate in Cells.NeuronTemplates:
         cell = getattr(Cells,input.cellsopt.neurontemplate)(**input.cellsopt.init_options)
         if verbose:
@@ -40,7 +41,8 @@ def optogeneticStimulation(input, verbose = False):
     else:
         raise ValueError(f"input.neuronInput = {input.cellsopt.neurontemplate} is invalid. Possible templates are  {Cells.NeuronTemplates}")
 
-    # Plugin opsin
+
+    ## Plugin opsin
     oopt = input.cellsopt.opsin_options
     if oopt.opsinlocations is not None:
         if isinstance(oopt.opsinlocations,str):
@@ -54,11 +56,13 @@ def optogeneticStimulation(input, verbose = False):
         seglist, values = cell.distribute_mechvalue(oopt.distribution,method=oopt.distribution_method,source_hdistance = oopt.distribution_source_hdistance)
         cell.updateMechValue(seglist,values,'gchr2bar_'+oopt.opsinmech)
 
-    # Plugin extracellular
+
+    ## Plugin extracellular
     if input.cellsopt.extracellular:
         cell.insertExtracellular()
 
-    # Cell transformation
+
+    ## Cell transformation
     # Rotate cell
     ctopt = input.cellsopt.cellTrans_options
     if ctopt.rotate_flag:
@@ -68,14 +72,17 @@ def optogeneticStimulation(input, verbose = False):
         cell.move_Cell(ctopt.rt)
     del ctopt
 
-    # assign light stimulus
-    cell.updateXtraCoors()
+    cell.updateXtraCoors() # important to update Xtra values after transformation. values stored in xtra mech are used to calculated received Ve and I
 
-    # check if all pointers set
-    cell.check_pointers(input.autosetPointer)
 
-    #Load fields
-    # [ ]: test if change to params reflect to input.stimopt.Estimparams as well
+    ## check if all pointers set
+    cell.check_pointers(input.autosetPointer) # autoset missing pointers to track a non change variable that equals 0 at init -> reason why sections do not receive light when no opsin present (in shape plots)
+
+
+    # Stimulation setup
+    # ----------------------------------------------------------
+    ## Load fields
+    # Potential field
     estim_amp = []; estim_time = []
     if 'eVstim' in input.stimopt.stim_type:
         params = input.stimopt.Estimparams
@@ -90,9 +97,8 @@ def optogeneticStimulation(input, verbose = False):
             estim_amp = h.Vector(estim_amp)
             estim_time = h.Vector(estim_time)
             estim_amp.play(h._ref_estim_xtra, estim_time, True) #True -> interpolate
-    
-    # [ ]: test if change to params reflect to input.stimopt.Ostimparams as well
-    # [ ]: stimtype options works?
+
+    # Optical field
     ostim_amp = []; ostim_time = []
     if 'Optogxstim' in input.stimopt.stim_type:
         params = input.stimopt.Ostimparams
@@ -108,45 +114,40 @@ def optogeneticStimulation(input, verbose = False):
             ostim_time = h.Vector(ostim_time)
             ostim_amp.play(h._ref_ostim_xtra, ostim_time, True) #True -> interpolate
 
-    # setup recording
-    # TODO: add recording options/refine below
 
+
+    # Analyses setup
+    # ----------------------------------------------------------
+    ## setup recording traces
     Dt = 1/input.samplingFrequency*1e3
     t, vsoma, traces = setup_recordTraces(input.analysesopt.recordTraces,cell,Dt)
-    
 
-    # do simulation
+
+    # Simulate
+    # ----------------------------------------------------------
     h.dt = input.dt
     h.celsius = input.celsius
     h.finitialize(input.v0)
     h.continuerun(input.duration)
 
-    
-    # TODO: imporve analyses
-    # [ ]: plots of membrane potentials, currents
-    # [ ]: shape plots of fields, gbars
 
-    # make some plots to test implementation
+
+    # Analyse
+    # ----------------------------------------------------------
+    # create colored section plot
     if input.analysesopt.sec_plot_flag:
         cell.sec_plot()
+
+    # print section positions
     if input.analysesopt.print_secpos:
         cell.gather_secpos(print_flag = True)
-    if len(input.analysesopt.shapeplots)>0:
-        for pi in input.analysesopt.shapeplots:
-            fig = plt.figure(figsize = (16,10))
-            ax = plt.subplot(111,projection='3d')
-            mphv2.shapeplot(h,ax,**pi)
-            ax.set_title(cell)
-            ax.set_zlim([-300,300])
-            ax.set_xlim([-300,300])
-            ax.set_ylim([-200,400])
-            ax.set_xlabel('x')
-            ax.set_ylabel('y')
-            ax.set_zlabel('z')
-            ax.view_init(elev=90, azim=-90)
 
-    plot_traces(t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp)
-    
+    # create shapePlots
+    shapePlot(input.analysesopt.shapeplots, input.analysesopt.shapeplot_axsettings, input.analysesopt.save_shapeplots)
+
+    # plot recorded traces
+    plot_traces(t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp, input.analysesopt.tracesplot_axsettings,input.analysesopt.save_traces)
+
     if input.plot_flag:
         plt.show(block=False)
 
@@ -154,8 +155,30 @@ def optogeneticStimulation(input, verbose = False):
 
     # TODO: add save results, save figures
 
+def shapePlot(shapeplotsinfo, axsettings, save_flag):
+    if len(shapeplotsinfo)>0:
+        if isinstance(axsettings,dict):
+            axsettings = len(shapeplotsinfo)*[axsettings]
+        elif len(axsettings)==1 and isinstance(axsettings,list):
+            axsettings = len(shapeplotsinfo)*axsettings
 
-def plot_traces(t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp):
+        for pi,axsetting in zip(shapeplotsinfo,axsettings):
+            fig = plt.figure(figsize = axsetting.get('figsize',(16,10)))
+            ax = plt.subplot(111,projection='3d')
+            mphv2.shapeplot(h,ax,**pi)
+            ax.set_zlim(axsetting.get('zlim',[-300,300]))
+            ax.set_xlim(axsetting.get('xlim',[-300,300]))
+            ax.set_ylim(axsetting.get('ylim',[-200,400]))
+            ax.set_xlabel('x')
+            ax.set_ylabel('y')
+            ax.set_zlabel('z')
+            ax.view_init(elev=axsetting.get('elev',90), azim=axsetting.get('azim',-90))
+            if save_flag:
+                savename = f"{axsetting['figdir']}/shapeplot_{shapeplotsinfo['cvals_type']}.{axsetting.get('extension','png')}"
+                fig.savefig(savename)
+
+
+def plot_traces(t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,figsettings,save_flag):
     t = np.array(t)
     vsoma = np.array(vsoma)
     # plot traces
@@ -163,7 +186,7 @@ def plot_traces(t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp):
     ax.plot(t,vsoma)
 
     # fill locations of pulses
-    for stimtime,stimamp,clr in zip([ostim_time,estim_time],[ostim_amp,estim_amp],['tab:blue','tab:yellow']):
+    for stimtime,stimamp,clr in zip([ostim_time,estim_time],[ostim_amp,estim_amp],['tab:blue','gold']):
         stimamp = np.array(stimamp)
         if len(stimamp>0):
             Iopt_np = np.array(stimamp)
@@ -203,9 +226,13 @@ def plot_traces(t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp):
                 t1 = ifig*12+i*4
                 t2 = ifig*12+(i+1)*4
                 for trace, name in zip(v['traces'][t1:t2],v['names'][t1:t2]):
-                    ax.plot(t,trace,label=name.split('.')[-1])
+                    ax.plot(t,trace,label=name.split('.',1)[-1])
                 ax.legend()
             fig.suptitle(k)
+
+            if save_flag:
+                savename = f"{figsettings['figdir']}/traces_{k}{ifig+1}.{figsettings.get('extension','png')}"
+                fig.savefig(savename)
 
 
 def setup_recordTraces(recordTraces,cell,Dt):
@@ -319,11 +346,22 @@ if __name__ == '__main__':
 
 
 
-    input = stp.simParams({'plot_flag': True, 'stimopt':{'stim_type':'Optogxstim'}})
+    input = stp.simParams({'plot_flag': True, 'stimopt':{'stim_type':['Optogxstim','eVstim']}})
     input.stimopt.Ostimparams.field = eF.prepareDataforInterp(field,'ninterp')
     input.stimopt.Ostimparams.options['phi'] = np.pi/2
     input.stimopt.Ostimparams.options['xT'] = [0,0,100]
     input.stimopt.Ostimparams.amp = 5000
+    input.stimopt.Ostimparams.delay = 70
+    input.stimopt.Ostimparams.dur = 10
+
+    input.stimopt.Estimparams.filepath = 'Inputs\ExtracellularPotentials\Reference - recessed\PotentialDistr-600um-20umMESH_refined_masked_structured.txt'
+    input.stimopt.Estimparams.delay = 50
+    input.stimopt.Estimparams.dur = 10
+    input.stimopt.Estimparams.options['phi'] = np.pi/2
+    input.stimopt.Estimparams.options['xT'] = [0,0,100]
+    input.cellsopt.extracellular = True
+
+
 
     input.cellsopt.opsin_options.opsinlocations = 'apicalnotuft'
     optogeneticStimulation(input, verbose = True)
