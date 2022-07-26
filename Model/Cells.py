@@ -1,4 +1,3 @@
-from tkinter import E
 from neuron import h
 import numpy as np
 import re, mmap
