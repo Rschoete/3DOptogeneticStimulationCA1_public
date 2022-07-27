@@ -91,9 +91,8 @@ def optogeneticStimulation(input, verbose = False):
             params['field'] = eF.prepareDataforInterp(field, params['method_prepareData'])
             del field
         t = np.arange(0,input.duration*1.1, input.dt/10)
-        estim_time,estim_amp,totales = eF.setEstim(cell.allsec, t, params['delay'], params['dur'], params['amp'], params['field'],params['structured'],params['pulseType'],netpyne=False, stimtype = 'electrical', **params['options'])
+        estim_time,estim_amp,totales = eF.setXstim(cell.allsec, t, params['delay'], params['dur'], params['amp'], params['field'],params['structured'],params['pulseType'],stimtype='electrical',netpyne=False, **params['options'])
         if estim_amp is not None and len(estim_amp)>0:
-            # need to do at this level (does not work when in setEstim do not know why)
             estim_amp = h.Vector(estim_amp)
             estim_time = h.Vector(estim_time)
             estim_amp.play(h._ref_estim_xtra, estim_time, True) #True -> interpolate
@@ -107,9 +106,9 @@ def optogeneticStimulation(input, verbose = False):
             params['field'] = eF.prepareDataforInterp(field, params['method_prepareData'])
             del field
         t = np.arange(0,input.duration*1.1, input.dt/10)
-        ostim_time,ostim_amp,totalos = eF.setEstim(cell.allsec, t, params['delay'], params['dur'], params['amp'], params['field'],params['structured'],params['pulseType'],netpyne=False, stimtype = 'optical', **params['options'])
+        ostim_time,ostim_amp,totalos = eF.setXstim(cell.allsec, t, params['delay'], params['dur'], params['amp'], params['field'],params['structured'],params['pulseType'],stimtype = 'optical',netpyne=False, **params['options'])
         if ostim_amp is not None and len(ostim_amp)>0:
-            # need to do at this level (does not work when in setEstim do not know why)
+            # need to do at this level (does not work when in do not know why)
             ostim_amp = h.Vector(ostim_amp)
             ostim_time = h.Vector(ostim_time)
             ostim_amp.play(h._ref_ostim_xtra, ostim_time, True) #True -> interpolate
@@ -383,6 +382,8 @@ if __name__ == '__main__':
     input.stimopt.Estimparams.options['phi'] = np.pi/2
     input.stimopt.Estimparams.options['xT'] = [0,0,100]
     input.cellsopt.extracellular = True
+
+    input.analysesopt.shapeplots.append(dict(cvals_type='es'))
 
 
 
