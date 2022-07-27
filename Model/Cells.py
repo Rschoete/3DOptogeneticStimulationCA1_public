@@ -214,7 +214,7 @@ class NeuronTemplate:
                 else:
                     colorlist.append([0,0,0])
         mphv2.shapeplot(h,ax,sections = self.allsec,cvals = colorlist,cb_flag=False,clim=[0,0])
-        ax.set_title('sec plot')
+        ax.set_title(f"{self.templatename} / {self.morphology} / {self.celltype}")
         ax.set_xlabel('x')
         ax.set_ylabel('y')
         ax.set_zlabel('z')

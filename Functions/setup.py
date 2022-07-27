@@ -205,6 +205,12 @@ class analysesOptions(Dict):
         self.save_traces = True
         self.traces_extension = '.png'
 
+        self.recordAPs = 'all' #'all', 'all0.5' all -> all segments all0.5 only centre segment
+        self.apthresh = -10
+        self.preordersecforplot = True
+        self.save_rasterplot = True
+        self.rasterplotopt = {}
+
 
 
 

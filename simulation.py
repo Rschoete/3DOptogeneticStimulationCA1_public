@@ -18,6 +18,8 @@ from matplotlib import use as mpluse
 import Functions.globalFunctions.morphology_v2 as mphv2
 import Functions.globalFunctions.ExtracellularField as eF
 
+colorkeyval = {'soma':'tab:red', 'axon':'tomato','apical trunk':'tab:blue','apical trunk ext':'royalblue', 'apical tuft': 'tab:green','apical obliques': 'tab:cyan', 'basal dendrites': 'tab:olive', 'unclassified':[0,0,0]}
+
 def optogeneticStimulation(input, verbose = False):
 
     if not input.plot_flag:
@@ -120,6 +122,7 @@ def optogeneticStimulation(input, verbose = False):
     ## setup recording traces
     Dt = 1/input.samplingFrequency*1e3
     t, vsoma, traces = setup_recordTraces(input.analysesopt.recordTraces,cell,Dt)
+    apcounts, aptimevectors, apinfo = setup_recordAPs(h,input.analysesopt.recordAPs,cell, threshold=input.analysesopt.apthresh, preorder= input.analysesopt.preordersecforplot)
 
 
     # Simulate
@@ -158,21 +161,23 @@ def optogeneticStimulation(input, verbose = False):
         cell.gather_secpos(print_flag = True)
 
     # create shapePlots
-    shapePlot(aopt.shapeplots, aopt.shapeplot_axsettings, input.save_flag and aopt.save_shapeplots,figdir=fig_dir,extension=aopt.shapeplots_extension)
+    shapePlot(cell, aopt.shapeplots, aopt.shapeplot_axsettings, input.save_flag and aopt.save_shapeplots,figdir=fig_dir,extension=aopt.shapeplots_extension)
 
     # plot recorded traces
     plot_traces(t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp, aopt.tracesplot_axsettings, input.save_flag and aopt.save_traces, figdir=fig_dir,extension=aopt.traces_extension)
+
+    # rastergram
+    rasterplot(cell,aptimevectors,apinfo,np.array(t),input.save_flag and aopt.save_rasterplot, figdir = fig_dir, **aopt.rasterplotopt)
 
     if input.plot_flag:
         plt.show(block=False)
 
     print('finished')
 
-    # [ ]: spike detection
     # [ ]: feature extraction at least Firing rate, save in way known for all sections and shape plot can be regenerated
-    # TODO: add save results, save figures
+    # TODO: add save results
 
-def shapePlot(shapeplotsinfo, axsettings,save_flag, figdir = '.', extension = '.png'):
+def shapePlot(cell,shapeplotsinfo, axsettings,save_flag, figdir = '.', extension = '.png'):
     if len(shapeplotsinfo)>0:
         if isinstance(axsettings,dict):
             axsettings = len(shapeplotsinfo)*[axsettings]
@@ -190,6 +195,7 @@ def shapePlot(shapeplotsinfo, axsettings,save_flag, figdir = '.', extension = '.
             ax.set_ylabel('y')
             ax.set_zlabel('z')
             ax.view_init(elev=axsetting.get('elev',90), azim=axsetting.get('azim',-90))
+            ax.set_title(f"{cell.templatename} / {cell.morphology} / {cell.celltype}")
             if save_flag:
                 savename = f"{figdir}/shapeplot_{pi['cvals_type']}.{extension}"
                 fig.savefig(savename)
@@ -221,6 +227,7 @@ def plot_traces(t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,figsett
     ax.set_xlim([0,t[-1]])
     ax.set_xlabel('time [ms]')
     ax.set_ylabel('V [mV]')
+    ax.set_title('soma')
     if save_flag:
         savename = f"{figdir}/traces_vsoma.{extension}"
         fig.savefig(savename)
@@ -298,6 +305,74 @@ def setup_recordTraces(recordTraces,cell,Dt):
 
     return t, vsoma, traces
 
+def rasterplot(cell,aptimevectors,apinfo,t,save_flag, figdir, markersize = 2, marker = '.', xlims = None, colorkeyval=colorkeyval, extension='.png'):
+    fig,ax =plt.subplots(1,1,tight_layout=True)
+    for i, (aptv, clr) in enumerate(zip(aptimevectors,apinfo['colorlist'])):
+        ax.scatter(list(aptv),i*np.ones(len(aptv)),s=markersize,c=clr,marker = marker)
+
+    if xlims is None:
+        xlims = [t[0], t[-1]]
+    ax.set_xlim(xlims)
+    ax.set_ylim([-1,i+1])
+    ax.invert_yaxis()
+    ax.set_xlabel('time [ms]')
+    for k,v in colorkeyval.items():
+        ax.plot(np.nan,np.nan,label=k,color=v)
+    ax.legend(frameon=False)
+    ax.set_title(f"{cell.templatename} / {cell.morphology} / {cell.celltype}")
+    if save_flag:
+        savename = f"{figdir}/rasterplot.{extension}"
+        fig.savefig(savename)
+
+def setup_recordAPs(h,recordAPs,cell, threshold, preorder = False, colorkeyval=colorkeyval):
+    apcounts = []
+    aptimevectors = []
+    segnames = []
+    colorlist = []
+    
+    if recordAPs == 'all':
+        if preorder:
+            seglist = [seg for sec in mphv2.allsec_preorder(h) for seg in sec]
+        else:
+            seglist = [seg for sec in cell.allsec for seg in sec]
+    elif recordAPs == 'all0.5':
+        if preorder:
+            seglist = [sec(0.5) for sec in mphv2.allsec_preorder(h)]
+        else:
+            seglist = [sec(0.5) for sec in cell.allsec]
+    else:
+        raise ValueError('recordAPs: can only be "all" or "all0.5"')
+    for seg in seglist:
+        segnames.append(str(seg).split('.',1)[-1])
+        timevector = h.Vector()
+        apc = h.APCount(seg)
+        apc.thresh = threshold
+        apc.record(timevector)
+        apcounts.append(apc)
+        aptimevectors.append(timevector)
+
+        sec = seg.sec
+        if 'soma' in str(sec):
+            colorlist.append(colorkeyval['soma'])
+        elif 'axon' in str(sec):
+            colorlist.append(colorkeyval['axon'])
+        elif sec in cell.apicalTrunk:
+            colorlist.append(colorkeyval['apical trunk'])
+        elif sec in cell.apicalTrunk_ext:
+            colorlist.append(colorkeyval['apical trunk ext'])
+        elif sec in cell.apicalTuft:
+            colorlist.append(colorkeyval['apical tuft'])
+        elif sec in cell.apical_obliques:
+            colorlist.append(colorkeyval['apical obliques'])
+        elif 'dend' in str(sec):
+            colorlist.append(colorkeyval['basal dendrites'])
+        else:
+            colorlist.append([0,0,0])
+    apinfo = {}
+    apinfo['segnames'] = tuple(segnames)
+    apinfo['colorlist']=tuple(colorlist)
+    return tuple(apcounts), tuple(aptimevectors), apinfo
+
 def convert_strtoseclist(cell,location):
     if location.lower()=='soma':
         location = cell.soma
@@ -367,7 +442,7 @@ if __name__ == '__main__':
 
 
     input = stp.simParams({'duration':100, 'save_flag': True, 'plot_flag': True, 'stimopt':{'stim_type':['Optogxstim']}})
-    input.cellsopt.neurontemplate = 'bACnoljp8'
+    #input.cellsopt.neurontemplate = 'bACnoljp8'
 
     input.stimopt.Ostimparams.field = eF.prepareDataforInterp(field,'ninterp')
     input.stimopt.Ostimparams.options['phi'] = np.pi/2
@@ -387,7 +462,7 @@ if __name__ == '__main__':
 
 
 
-    input.cellsopt.opsin_options.opsinlocations = 'axon'
+    input.cellsopt.opsin_options.opsinlocations = 'all'
     optogeneticStimulation(input, verbose = True)
 
     if input.plot_flag:
