@@ -6,12 +6,13 @@ class simParams(object):
     def __init__(self, simParamsDict = None):
         # Flags
         self.test_flag = False
-        self.plot_flag = False
+        self.plot_flag = True
+        self.save_flag = True
         self.autosetPointer = True
 
         self.seed = datetime(2021, 12, 1, 13, 0).timestamp()
 
-        self.duration = 100
+        self.duration = 1000
         self.samplingFrequency = 10000 #Hz
         self.dt = 0.025
         self.celsius = 20
@@ -196,11 +197,13 @@ class analysesOptions(Dict):
 
         self.shapeplots = [dict(cvals_type='os',colorscale='log10'),dict(cvals_type='gchr2bar_chr2h134r')]
         self.shapeplot_axsettings = {}
-        self.save_shapeplots = False
+        self.save_shapeplots = True
+        self.shapeplots_extension = '.png'
 
         self.recordTraces = {'v':dict(sec='all', loc = 0.5, var='v'),'ichr2':dict(sec='all', loc=0.5, var = 'i', mech='chr2h134r')}
         self.tracesplot_axsettings = {}
-        self.save_traces = False
+        self.save_traces = True
+        self.traces_extension = '.png'
 
 
 

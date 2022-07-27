@@ -134,28 +134,46 @@ def optogeneticStimulation(input, verbose = False):
 
     # Analyse
     # ----------------------------------------------------------
+    # Create
+    now = datetime.now()
+    dt_string = now.strftime("%Y%m%d%H%M")
+    results_dir = "./Results%s/Results_%s_%s_%s"%(input.resultsFolder, input.subfolderSuffix,input.cellsopt.neurontemplate,dt_string)
+    fig_dir = results_dir+"/Figures"
+    if input.save_flag:
+        os.makedirs(results_dir, exist_ok=True)
+        os.makedirs(fig_dir, exist_ok=True)
     # create colored section plot
-    if input.analysesopt.sec_plot_flag:
-        cell.sec_plot()
+    aopt = input.analysesopt
+    if aopt.sec_plot_flag:
+        ax = cell.sec_plot()
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+        ax.view_init(elev=90, azim=-90)
+        if input.save_flag:
+            savename = f"{fig_dir}/sec_plot.png"
+            plt.savefig(savename)
 
     # print section positions
-    if input.analysesopt.print_secpos:
+    if aopt.print_secpos:
         cell.gather_secpos(print_flag = True)
 
     # create shapePlots
-    shapePlot(input.analysesopt.shapeplots, input.analysesopt.shapeplot_axsettings, input.analysesopt.save_shapeplots)
+    shapePlot(aopt.shapeplots, aopt.shapeplot_axsettings, input.save_flag and aopt.save_shapeplots,figdir=fig_dir,extension=aopt.shapeplots_extension)
 
     # plot recorded traces
-    plot_traces(t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp, input.analysesopt.tracesplot_axsettings,input.analysesopt.save_traces)
+    plot_traces(t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp, aopt.tracesplot_axsettings, input.save_flag and aopt.save_traces, figdir=fig_dir,extension=aopt.traces_extension)
 
     if input.plot_flag:
         plt.show(block=False)
 
     print('finished')
 
+    # [ ]: spike detection
+    # [ ]: feature extraction at least Firing rate, save in way known for all sections and shape plot can be regenerated
     # TODO: add save results, save figures
 
-def shapePlot(shapeplotsinfo, axsettings, save_flag):
+def shapePlot(shapeplotsinfo, axsettings,save_flag, figdir = '.', extension = '.png'):
     if len(shapeplotsinfo)>0:
         if isinstance(axsettings,dict):
             axsettings = len(shapeplotsinfo)*[axsettings]
@@ -174,11 +192,10 @@ def shapePlot(shapeplotsinfo, axsettings, save_flag):
             ax.set_zlabel('z')
             ax.view_init(elev=axsetting.get('elev',90), azim=axsetting.get('azim',-90))
             if save_flag:
-                savename = f"{axsetting['figdir']}/shapeplot_{shapeplotsinfo['cvals_type']}.{axsetting.get('extension','png')}"
+                savename = f"{figdir}/shapeplot_{pi['cvals_type']}.{extension}"
                 fig.savefig(savename)
 
-
-def plot_traces(t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,figsettings,save_flag):
+def plot_traces(t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,figsettings,save_flag,figdir = '.', extension = '.png'):
     t = np.array(t)
     vsoma = np.array(vsoma)
     # plot traces
@@ -205,6 +222,9 @@ def plot_traces(t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,figsett
     ax.set_xlim([0,t[-1]])
     ax.set_xlabel('time [ms]')
     ax.set_ylabel('V [mV]')
+    if save_flag:
+        savename = f"{figdir}/traces_vsoma.{extension}"
+        fig.savefig(savename)
 
     # plot all recorded traces
     for k,v in traces.items():
@@ -217,8 +237,10 @@ def plot_traces(t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,figsett
             fig = plt.figure(tight_layout=True)
             if sp_count+3<nrsubplots:
                 axs = fig.subplots(3,1,sharex=True)
+                sp_count+=3
             else:
                 axs = fig.subplots(nrsubplots-sp_count,1,sharex=True)
+                sp_count+=nrsubplots-sp_count
                 if not isinstance(axs,np.ndarray):
                     axs = [axs]
 
@@ -231,9 +253,8 @@ def plot_traces(t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,figsett
             fig.suptitle(k)
 
             if save_flag:
-                savename = f"{figsettings['figdir']}/traces_{k}{ifig+1}.{figsettings.get('extension','png')}"
+                savename = f"{figdir}/traces_{k}{ifig+1}.{extension}"
                 fig.savefig(savename)
-
 
 def setup_recordTraces(recordTraces,cell,Dt):
 
@@ -346,7 +367,9 @@ if __name__ == '__main__':
 
 
 
-    input = stp.simParams({'plot_flag': True, 'stimopt':{'stim_type':['Optogxstim','eVstim']}})
+    input = stp.simParams({'duration':100, 'save_flag': True, 'plot_flag': True, 'stimopt':{'stim_type':['Optogxstim']}})
+    input.cellsopt.neurontemplate = 'bACnoljp8'
+
     input.stimopt.Ostimparams.field = eF.prepareDataforInterp(field,'ninterp')
     input.stimopt.Ostimparams.options['phi'] = np.pi/2
     input.stimopt.Ostimparams.options['xT'] = [0,0,100]
@@ -363,7 +386,7 @@ if __name__ == '__main__':
 
 
 
-    input.cellsopt.opsin_options.opsinlocations = 'apicalnotuft'
+    input.cellsopt.opsin_options.opsinlocations = 'axon'
     optogeneticStimulation(input, verbose = True)
 
     if input.plot_flag:
