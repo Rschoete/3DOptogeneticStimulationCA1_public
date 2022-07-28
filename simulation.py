@@ -18,7 +18,7 @@ from Model import Cells
 from matplotlib import use as mpluse
 import Functions.globalFunctions.morphology_v2 as mphv2
 import Functions.globalFunctions.ExtracellularField as eF
-from Functions.globalFunctions.utils import MyEncoder, applysigniftoall
+from Functions.globalFunctions.utils import MyEncoder, applysigniftoall, get_size
 
 colorkeyval = {'soma':'tab:red', 'axon':'tomato','apical trunk':'tab:blue','apical trunk ext':'royalblue', 'apical tuft': 'tab:green','apical obliques': 'tab:cyan', 'basal dendrites': 'tab:olive', 'unclassified':[0,0,0]}
 
@@ -36,13 +36,17 @@ def optogeneticStimulation(input, verbose = False):
     rng = np.random.seed(int(seed))
     random.seed(int(seed))
 
+    # start timer
+    timerstart = time.time()
+
     # Cell setup
     # ----------------------------------------------------------
+    print('\nCell setup')
     ##Load cell
     if input.cellsopt.neurontemplate in Cells.NeuronTemplates:
+        print(f'Loading cell: {input.cellsopt.neurontemplate}')
         cell = getattr(Cells,input.cellsopt.neurontemplate)(**input.cellsopt.init_options)
-        if verbose:
-            print(f'{input.cellsopt.neurontemplate} loaded')
+        print(f'\t* celltype: {cell.celltype}\n\t* morphology: {cell.morphology}')
     else:
         raise ValueError(f"input.neuronInput = {input.cellsopt.neurontemplate} is invalid. Possible templates are  {Cells.NeuronTemplates}")
 
@@ -50,7 +54,9 @@ def optogeneticStimulation(input, verbose = False):
     ## Plugin opsin
     oopt = input.cellsopt.opsin_options
     if oopt.opsinlocations is not None:
+        print(f'\t* opsin: {oopt.opsinmech}')
         if isinstance(oopt.opsinlocations,str):
+            print(f'\t* opsinlocations: {oopt.opsinlocations}')
             # if opsin location is a string convert to list of sections (method of neurontemplate class)
             oopt.opsinlocations = convert_strtoseclist(cell,oopt.opsinlocations)
 
@@ -63,6 +69,7 @@ def optogeneticStimulation(input, verbose = False):
 
 
     ## Plugin extracellular
+    print(f"\t* extracellular: {input.cellsopt.extracellular}")
     if input.cellsopt.extracellular:
         cell.insertExtracellular()
 
@@ -86,10 +93,12 @@ def optogeneticStimulation(input, verbose = False):
 
     # Stimulation setup
     # ----------------------------------------------------------
+    print('\nLoadingFields')
     ## Load fields
     # Potential field
     estim_amp = []; estim_time = []
     if 'eVstim' in input.stimopt.stim_type:
+        print('\t* extracellular electrical stimulation')
         params = input.stimopt.Estimparams
         if params['field'] is None:
             field = np.genfromtxt(params['filepath'],comments='%')
@@ -105,6 +114,7 @@ def optogeneticStimulation(input, verbose = False):
     # Optical field
     ostim_amp = []; ostim_time = []
     if 'Optogxstim' in input.stimopt.stim_type:
+        print('\t* Optogenetics stimulation')
         params = input.stimopt.Ostimparams
         if params['field'] is None:
             field = np.genfromtxt(params['filepath'],comments='%')
@@ -117,12 +127,14 @@ def optogeneticStimulation(input, verbose = False):
             ostim_amp = h.Vector(ostim_amp)
             ostim_time = h.Vector(ostim_time)
             ostim_amp.play(h._ref_ostim_xtra, ostim_time, True) #True -> interpolate
+        print('')
 
 
 
     # Analyses setup
     # ----------------------------------------------------------
     ## setup recording traces
+    print(f'Setup Analyses\n\t* sampling frequency: {input.samplingFrequency} Hz\n')
     Dt = 1/input.samplingFrequency*1e3
     t, vsoma, traces = setup_recordTraces(input.analysesopt.recordTraces,cell,Dt)
     apcounts, aptimevectors, apinfo = setup_recordAPs(h,input.analysesopt.recordAPs,cell, threshold=input.analysesopt.apthresh, preorder= input.analysesopt.preordersecforplot)
@@ -130,15 +142,21 @@ def optogeneticStimulation(input, verbose = False):
 
     # Simulate
     # ----------------------------------------------------------
+    print('Simulating')
+    print(f'\t* dt: {input.dt} ms\n\t* duration: {input.duration} ms\n...')
+    timer_startsim = time.time()
     h.dt = input.dt
     h.celsius = input.celsius
     h.finitialize(input.v0)
     h.continuerun(input.duration)
+    timer_stopsim = time.time()
+    print(f"simulation finished in {timer_stopsim-timer_startsim:0.2f} s\n")
 
 
 
     # Analyse
     # ----------------------------------------------------------
+    print('Analyses')
     # Create
     now = datetime.now()
     dt_string = now.strftime("%Y%m%d%H%M")
@@ -150,6 +168,7 @@ def optogeneticStimulation(input, verbose = False):
     # create colored section plot
     aopt = input.analysesopt
     if aopt.sec_plot_flag:
+        print("\t* Section plot")
         ax = cell.sec_plot()
         ax.set_xlabel('x')
         ax.set_ylabel('y')
@@ -161,21 +180,32 @@ def optogeneticStimulation(input, verbose = False):
 
     # print section positions
     if aopt.print_secpos:
+        print("\t* Section positons")
         cell.gather_secpos(print_flag = True)
 
     # create shapePlots
+    print("\t* Shape plots")
     shapePlot(cell, aopt.shapeplots, aopt.shapeplot_axsettings, input.save_flag and aopt.save_shapeplots,figdir=fig_dir,extension=aopt.shapeplots_extension)
 
     # plot recorded traces
+    print("\t* Plot traces")
     plot_traces(t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp, aopt.tracesplot_axsettings, input.save_flag and aopt.save_traces, figdir=fig_dir,extension=aopt.traces_extension)
 
     # rastergram
+    print("\t* Raster plot")
     rasterplot(cell,aptimevectors,apinfo,np.array(t),input.save_flag and aopt.save_rasterplot, figdir = fig_dir, **aopt.rasterplotopt)
 
     if input.plot_flag:
         plt.show(block=False)
 
-    print('finished')
+    
+    # stop timer
+    timerstop = time.time()
+    print(f'\nTotal time: {timerstop-timerstart:.2f} s\n')
+
+    # Saving Data
+    # ----------------------------------------------------------
+    print('Saving Data')
 
     # save input
     inputname = results_dir+'/input.json'
@@ -187,15 +217,30 @@ def optogeneticStimulation(input, verbose = False):
         inputData['totalos'] = totalos
     if input.signif is not None:
         inputData = applysigniftoall(inputData,input.signif)
-
+    inputData['runtime'] = timerstop-timerstart
     inputData['settings'] = input.todict(reduce=True,inplace=False) # this line last because inplace=False does not work -> always inplace
 
     with open(inputname, 'w') as outfile:
         json.dump(inputData, outfile, indent = 4, signif=input.signif,  cls=MyEncoder)
 
     # save results
+    # TODO: move whole save procedure to wrapper function
     resultsname = results_dir+'/data.json'
     data = {}
+    data['APs'] = addAPinfotoResults(apcounts,aptimevectors,apinfo)
+    data['t'] = np.array(t)
+    data['vsoma'] = np.array(vsoma)
+    data['traces'] = addTracestoResults(traces,input.samplingFrequency/input.analysesopt['samplefrequency_traces'])
+
+    data['Optogxstim'] = addOSinfo(cell, input.cellsopt['opsin_options']['opsinmech'],input.stimopt['Ostimparams'])
+    data['eVstim'] = addESinfo(cell,input.stimopt['Estimparams'])
+    datasize = get_size(data)
+    if datasize>input.resultsmemlim:
+        data['traces'] = f"excluded from saved file because mem limit {input.resultsmemlim} is exceeded {datasize} "
+        print(data['traces'])
+    if input.signif is not None:
+        data = applysigniftoall(data,input.signif)
+
 
     noCorrectSave = True
     counter = 1
@@ -216,9 +261,52 @@ def optogeneticStimulation(input, verbose = False):
             if counter>10:
                 noCorrectSave = False
             counter+=1
-    print('save successful')
-    # [ ]: feature extraction at least Firing rate, save in way known for all sections and shape plot can be regenerated
-    # TODO: add save results
+    print('\n!!Save successful !!')
+
+# TODO: move functions to subdirectory
+
+def addOSinfo(cell,opsinmech,stiminfo):
+    out = {}
+    out['gbar_opsin'] = []
+    out['intensity'] = []
+    out['segname'] = []
+    for sec in cell.allsec:
+        for seg in sec:
+            out['gbar_opsin'].append(getattr(seg,f"gchr2bar_{opsinmech}") if hasattr(seg,opsinmech) else np.nan)
+            out['segname'].append(str(seg))
+            out['intensity'].append(seg.os_xtra if hasattr(seg,'xtra') else np.nan)
+
+    out['stim_info'] = stiminfo
+    out['gbar_opsin'] = tuple(out['gbar_opsin'])
+    out['segname'] = tuple(out['segname'])
+    out['intensity'] = tuple(out['intensity'])
+    return out
+def addESinfo(cell,stiminfo):
+    out = {}
+    out['potential'] = []
+    out['segname'] = []
+    for sec in cell.allsec:
+        for seg in sec:
+            out['segname'].append(str(seg))
+            out['potential'].append(seg.es_xtra if (hasattr(seg,'xtra') and hasattr(seg,'extracellular')) else np.nan)
+
+    out['stim_info'] = stiminfo
+    out['segname'] = tuple(out['segname'])
+    out['potential'] = tuple(out['potential'])
+    return out
+def addAPinfotoResults(apcounts,aptimevectors,apinfo):
+    out = {}
+    out['apcounts'] = [x.n for x in apcounts]
+    out['aptimes'] = [list(x) for x in aptimevectors]
+    out['apinfo'] = apinfo
+    return out
+def addTracestoResults(traces,df):
+    out = {}
+    for k,v in traces.items():
+        out[k] = {}
+        for trace,name in zip(*v.values()):
+            out[k][name] = np.array(trace)[::max(int(df),1)]
+    return out
 
 def shapePlot(cell,shapeplotsinfo, axsettings,save_flag, figdir = '.', extension = '.png'):
     if len(shapeplotsinfo)>0:
@@ -484,19 +572,19 @@ if __name__ == '__main__':
 
 
 
-    input = stp.simParams({'duration':10, 'test_flag':True,'save_flag': True, 'plot_flag': False, 'stimopt':{'stim_type':['Optogxstim']}})
-    input.cellsopt.neurontemplate = Cells.NeuronTemplates[7]
+    input = stp.simParams({'duration':10000, 'test_flag':False,'save_flag': True, 'plot_flag': True, 'stimopt':{'stim_type':['Optogxstim','eVstim']}})
+    input.cellsopt.neurontemplate = Cells.NeuronTemplates[0]
 
     input.stimopt.Ostimparams.field = eF.prepareDataforInterp(field,'ninterp')
     input.stimopt.Ostimparams.amp = 5000
-    input.stimopt.Ostimparams.delay = 100
+    input.stimopt.Ostimparams.delay = 2000
     input.stimopt.Ostimparams.pulseType = 'pulseTrain'
-    input.stimopt.Ostimparams.dur = 600-1e-6
-    input.stimopt.Ostimparams.options = {'prf':0.01,'dc':0.5, 'phi': np.pi/2, 'xT': [0,0,100]}
-    
+    input.stimopt.Ostimparams.dur = 5000-1e-6
+    input.stimopt.Ostimparams.options = {'prf':0.01,'dc':0.05, 'phi': np.pi/2, 'xT': [0,0,100]}
+
 
     input.stimopt.Estimparams.filepath = 'Inputs\ExtracellularPotentials\Reference - recessed\PotentialDistr-600um-20umMESH_refined_masked_structured.txt'
-    input.stimopt.Estimparams.delay = 50
+    input.stimopt.Estimparams.delay = 100
     input.stimopt.Estimparams.dur = 10
     input.stimopt.Estimparams.options['phi'] = np.pi/2
     input.stimopt.Estimparams.options['xT'] = [0,0,100]
@@ -506,10 +594,10 @@ if __name__ == '__main__':
 
 
 
-    input.cellsopt.opsin_options.opsinlocations = 'all'
+    input.cellsopt.opsin_options.opsinlocations = 'apicalnoTuft'
     optogeneticStimulation(input, verbose = True)
 
-    #if input.plot_flag:
-     #   plt.show()
+    if input.plot_flag:
+        plt.show()
 
 

@@ -24,6 +24,7 @@ class simParams(object):
         self.resultsFolder = '/Temp'
         self.subfolderSuffix = ''
         self.signif = 4
+        self.resultsmemlim = 50*1024**2
 
         self.cellsopt = cellsOptions()
         self.stimopt = stimOptions()
@@ -200,7 +201,7 @@ class analysesOptions(Dict):
     """
     def __init__(self):
         self.sec_plot_flag = True
-        self.print_secpos = True
+        self.print_secpos = False
 
         self.shapeplots = [dict(cvals_type='os',colorscale='log10'),dict(cvals_type='gchr2bar_chr2h134r')]
         self.shapeplot_axsettings = {}
@@ -211,6 +212,7 @@ class analysesOptions(Dict):
         self.tracesplot_axsettings = {}
         self.save_traces = True
         self.traces_extension = '.png'
+        self.samplefrequency_traces = 5000 #Hz
 
         self.recordAPs = 'all' #'all', 'all0.5' all -> all segments all0.5 only centre segment
         self.apthresh = -10
