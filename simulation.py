@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import json
 import random
 import numpy as np
 from neuron import h
@@ -17,11 +18,13 @@ from Model import Cells
 from matplotlib import use as mpluse
 import Functions.globalFunctions.morphology_v2 as mphv2
 import Functions.globalFunctions.ExtracellularField as eF
+from Functions.globalFunctions.utils import MyEncoder, applysigniftoall
 
 colorkeyval = {'soma':'tab:red', 'axon':'tomato','apical trunk':'tab:blue','apical trunk ext':'royalblue', 'apical tuft': 'tab:green','apical obliques': 'tab:cyan', 'basal dendrites': 'tab:olive', 'unclassified':[0,0,0]}
 
 def optogeneticStimulation(input, verbose = False):
 
+    test_flag = input.test_flag
     if not input.plot_flag:
         # With this backend plots are not shown but can be saved
         mpluse("AGG")
@@ -174,6 +177,46 @@ def optogeneticStimulation(input, verbose = False):
 
     print('finished')
 
+    # save input
+    inputname = results_dir+'/input.json'
+    inputData = {}
+    inputData['seed'] = seed
+    if 'eVstim' in input.stimopt.stim_type:
+        inputData['totales'] = totales
+    if 'Optogx' in input.stimopt.stim_type:
+        inputData['totalos'] = totalos
+    if input.signif is not None:
+        inputData = applysigniftoall(inputData,input.signif)
+
+    inputData['settings'] = input.todict(reduce=True,inplace=False) # this line last because inplace=False does not work -> always inplace
+
+    with open(inputname, 'w') as outfile:
+        json.dump(inputData, outfile, indent = 4, signif=input.signif,  cls=MyEncoder)
+
+    # save results
+    resultsname = results_dir+'/data.json'
+    data = {}
+
+    noCorrectSave = True
+    counter = 1
+    while noCorrectSave:
+        print(f'saving results, attempt {counter}')
+        with open(resultsname, 'w') as outfile:
+            json.dump(data, outfile, indent = 4, signif=input.signif,  cls=MyEncoder)
+        if not test_flag:
+            time.sleep(counter*10)
+        try:
+            #check if we can reload the saved file
+            with open(resultsname, 'r') as testfile:
+                intm = json.load(testfile)
+            #succesfully reloaded file => end while
+            noCorrectSave = False
+        except ValueError:
+            # if not succesfully reloaded try another time with longer pause but maximum 10 times
+            if counter>10:
+                noCorrectSave = False
+            counter+=1
+    print('save successful')
     # [ ]: feature extraction at least Firing rate, save in way known for all sections and shape plot can be regenerated
     # TODO: add save results
 
@@ -441,15 +484,16 @@ if __name__ == '__main__':
 
 
 
-    input = stp.simParams({'duration':100, 'save_flag': True, 'plot_flag': True, 'stimopt':{'stim_type':['Optogxstim']}})
-    #input.cellsopt.neurontemplate = 'bACnoljp8'
+    input = stp.simParams({'duration':10, 'test_flag':True,'save_flag': True, 'plot_flag': False, 'stimopt':{'stim_type':['Optogxstim']}})
+    input.cellsopt.neurontemplate = Cells.NeuronTemplates[7]
 
     input.stimopt.Ostimparams.field = eF.prepareDataforInterp(field,'ninterp')
-    input.stimopt.Ostimparams.options['phi'] = np.pi/2
-    input.stimopt.Ostimparams.options['xT'] = [0,0,100]
     input.stimopt.Ostimparams.amp = 5000
-    input.stimopt.Ostimparams.delay = 70
-    input.stimopt.Ostimparams.dur = 10
+    input.stimopt.Ostimparams.delay = 100
+    input.stimopt.Ostimparams.pulseType = 'pulseTrain'
+    input.stimopt.Ostimparams.dur = 600-1e-6
+    input.stimopt.Ostimparams.options = {'prf':0.01,'dc':0.5, 'phi': np.pi/2, 'xT': [0,0,100]}
+    
 
     input.stimopt.Estimparams.filepath = 'Inputs\ExtracellularPotentials\Reference - recessed\PotentialDistr-600um-20umMESH_refined_masked_structured.txt'
     input.stimopt.Estimparams.delay = 50
@@ -465,7 +509,7 @@ if __name__ == '__main__':
     input.cellsopt.opsin_options.opsinlocations = 'all'
     optogeneticStimulation(input, verbose = True)
 
-    if input.plot_flag:
-        plt.show()
+    #if input.plot_flag:
+     #   plt.show()
 
 
