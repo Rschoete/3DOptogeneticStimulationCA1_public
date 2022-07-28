@@ -1,6 +1,8 @@
 from .globalFunctions.utils import Dict, replaceDictODict
 import numpy as np
 from datetime import datetime
+import neuron
+import inspect
 
 class simParams(object):
     def __init__(self, simParamsDict = None):
@@ -43,14 +45,19 @@ class simParams(object):
                         raise AttributeError(k)
 
     def todict(self,reduce,inplace = False):
+        #[ ] ISSUE: #1 inplace=False does not same to work anymore
         if not inplace:
             out = replaceDictODict(self.__dict__).copy()
+            out = replaceNeuronSectionsandFunTostr(out).copy()
         else:
             out = replaceDictODict(self.__dict__)
+            out = replaceNeuronSectionsandFunTostr(out)
+
         if reduce:
             msg = 'removedToReduceMemory'
             # add here variables that need to be substituted by msg
-
+            for x in ['Ostimparams','Estimparams']:
+                out['stimopt'][x]['field'] = msg
         return out
 
 class cellsOptions(Dict):
@@ -59,6 +66,7 @@ class cellsOptions(Dict):
 
     """
     def __init__(self):
+        super().__init__()
         self.neurontemplate = 'CA1_PC_cAC_sig5' # for other options see cells.Neurontemplates
         self.extracellular = False   # include extracellular mechinism for extracellular electrical stimulation
 
@@ -104,7 +112,6 @@ class cellsOptions(Dict):
         with x: seg_[x,y,z]
         '''
 
-
     def setParam(self, label, param, value):
         if label in self:
             d = self[label]
@@ -133,7 +140,7 @@ class stimOptions(Dict):
         self.Ostimparams.dur = 10
         self.Ostimparams.amp = 1
         self.Ostimparams.structured = True
-        self.Ostimparams.pulseType =  'singleSquarePulse'
+        self.Ostimparams.pulseType =  'singleSquarePulse' # or pulseTrain
         self.Ostimparams.options =  {} # options are 'prf', 'dc', phi, theta, psi, c0(point where to rotate around), xT (translation), fill_value, InterpolMethod
 
 
@@ -228,7 +235,30 @@ class analysesOptions(Dict):
     def rename(self, old, new, label=None):
         return self.__rename__(old, new, label)
 
+def replaceNeuronSectionsandFunTostr(obj):
+    if type(obj) == list:
+        for i,item in enumerate(obj):
+            if type(item) in [list, dict]:
+                item = replaceNeuronSectionsandFunTostr(item)
+            elif type(item) == neuron.nrn.Section:
+                obj[i] = str(item)
+            elif callable(item):
+                return inspect.getsource(item)
 
+    elif type(obj) == dict:
+        for key,val in obj.items():
+            if type(val) in [list, dict]:
+                obj[key] = replaceNeuronSectionsandFunTostr(val)
+            elif type(val) == neuron.nrn.Section:
+                obj[key] = str(val)
+            elif callable(val):
+                obj[key] =  inspect.getsource(val)
+    elif type(obj) == neuron.nrn.Section:
+        return str(obj)
+    elif callable(obj):
+        return inspect.getsource(obj)
+
+    return obj
 
 def recursiveDictUpdate(obj,value,checkhasattr_flag=True):
     for k,v in value.items():
