@@ -42,7 +42,7 @@ def AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,
     if input.plot_flag:
         plt.show(block=False)
 
-def SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos,runtime,seed,results_dir):
+def SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos,amps_SDeVstim,amps_SDoptogenx,runtime,seed,results_dir):
     test_flag = input.test_flag
     # save input
     inputname = results_dir+'/input.json'
@@ -67,9 +67,9 @@ def SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,
     data['t'] = np.array(t)
     data['vsoma'] = np.array(vsoma)
     data['traces'] = addTracestoResults(traces,input.samplingFrequency/input.analysesopt['samplefrequency_traces'])
-
     data['Optogxstim'] = addOSinfo(cell, input.cellsopt['opsin_options']['opsinmech'],input.stimopt['Ostimparams'])
     data['eVstim'] = addESinfo(cell,input.stimopt['Estimparams'])
+    data['SDcurve']= {'eVstim': amps_SDeVstim, 'Optogenx': amps_SDoptogenx}
     datasize = get_size(data)
     if datasize>input.resultsmemlim:
         data['traces'] = f"excluded from saved file because mem limit {input.resultsmemlim} is exceeded {datasize} "

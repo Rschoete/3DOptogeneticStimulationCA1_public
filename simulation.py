@@ -17,8 +17,12 @@ from Model import Cells
 from matplotlib import use as mpluse
 import Functions.globalFunctions.ExtracellularField as eF
 import Functions.support as sprt
+import Functions.globalFunctions.featExtract as featE
 
 def optogeneticStimulation(input, verbose = False):
+    print("date and time =", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+    if not isinstance(input.simulationType,list):
+        input.simulationType = [input.simulationType]
 
     if not input.plot_flag:
         # With this backend plots are not shown but can be saved
@@ -101,10 +105,7 @@ def optogeneticStimulation(input, verbose = False):
             del field
         t = np.arange(0,input.duration*1.1, input.dt/10)
         estim_time,estim_amp,totales = eF.setXstim(cell.allsec, t, params['delay'], params['dur'], params['amp'], params['field'],params['structured'],params['pulseType'],stimtype='electrical',netpyne=False, **params['options'])
-        if estim_amp is not None and len(estim_amp)>0:
-            estim_amp = h.Vector(estim_amp)
-            estim_time = h.Vector(estim_time)
-            estim_amp.play(h._ref_estim_xtra, estim_time, True) #True -> interpolate
+
 
     # Optical field
     ostim_amp = []; ostim_time = []; totalos = 0
@@ -117,37 +118,71 @@ def optogeneticStimulation(input, verbose = False):
             del field
         t = np.arange(0,input.duration*1.1, input.dt/10)
         ostim_time,ostim_amp,totalos = eF.setXstim(cell.allsec, t, params['delay'], params['dur'], params['amp'], params['field'],params['structured'],params['pulseType'],stimtype = 'optical',netpyne=False, **params['options'])
+
+    #TODO: clean up SD code, perhaps move to analyses wrapper?
+    # Perform simulations
+    # ----------------------------------------------------------
+    amps_SDeVstim = None; amps_SDoptogenx = None
+    if 'SD_eVstim' in input.simulationType:
+        print('SD_eVstim')
+        SDcopt = input.analysesopt.SDeVstim
+        params = input.stimopt.Estimparams
+        SDcopt.cellrecloc = sprt.convert_strtoseg(cell,SDcopt.cellrecloc)
+        amps_SDeVstim = featE.SD_curve_xstim(h,cell,SDcopt.durs,params['field'],SDcopt.startamp,SDcopt.cellrecloc,SDcopt.stimtype,stimpointer=SDcopt.stimpointer,estimoptions=params['options'], storeNone=False, **SDcopt.options)
+        print(amps_SDeVstim)
+        figsdevstim = plt.figure()
+        ax = plt.subplot(111)
+        ax.plot(SDcopt.durs,np.abs(amps_SDeVstim))
+        ax.set_yscale('log')
+        ax.set_xscale('log')
+    if  'SD_Optogenx' in input.simulationType:
+        print('SD_Optogenx')
+        SDcopt = input.analysesopt.SDOptogenx
+        params = input.stimopt.Ostimparams
+        SDcopt.cellrecloc = sprt.convert_strtoseg(cell,SDcopt.cellrecloc)
+        amps_SDoptogenx = featE.SD_curve_xstim(h,cell,SDcopt.durs,params['field'],SDcopt.startamp,SDcopt.cellrecloc,SDcopt.stimtype,stimpointer=SDcopt.stimpointer,estimoptions=params['options'], storeNone=False, **SDcopt.options)
+        print(amps_SDoptogenx)
+        figsdoptogenx = plt.figure()
+        ax = plt.subplot(111)
+        ax.plot(SDcopt.durs,np.abs(amps_SDoptogenx))
+        ax.set_yscale('log')
+        ax.set_xscale('log')
+    if 'normal' in input.simulationType:
+
+        if estim_amp is not None and len(estim_amp)>0:
+            estim_amp = h.Vector(estim_amp)
+            estim_time = h.Vector(estim_time)
+            estim_amp.play(h._ref_estim_xtra, estim_time, True) #True -> interpolate
+
         if ostim_amp is not None and len(ostim_amp)>0:
             # need to do at this level (does not work when in do not know why)
             ostim_amp = h.Vector(ostim_amp)
             ostim_time = h.Vector(ostim_time)
             ostim_amp.play(h._ref_ostim_xtra, ostim_time, True) #True -> interpolate
         print('')
+        # Analyses setup
+        # ----------------------------------------------------------
+        ## setup recording traces
+        print(f'Setup Analyses\n\t* sampling frequency: {input.samplingFrequency} Hz\n')
+        Dt = 1/input.samplingFrequency*1e3
+        t, vsoma, traces = sprt.setup_recordTraces(h,input.analysesopt.recordTraces,cell,Dt)
+        apcounts, aptimevectors, apinfo = sprt.setup_recordAPs(h,input.analysesopt.recordAPs,cell, threshold=input.analysesopt.apthresh, preorder= input.analysesopt.preordersecforplot)
 
 
+        # Simulate
+        # ----------------------------------------------------------
+        print('Simulating')
+        print(f'\t* dt: {input.dt} ms\n\t* duration: {input.duration} ms\n...')
+        timer_startsim = time.time()
+        h.dt = input.dt
+        h.celsius = input.celsius
+        h.finitialize(input.v0)
+        h.continuerun(input.duration)
+        timer_stopsim = time.time()
+        print(f"simulation finished in {timer_stopsim-timer_startsim:0.2f} s\n")
 
-    # Analyses setup
-    # ----------------------------------------------------------
-    ## setup recording traces
-    print(f'Setup Analyses\n\t* sampling frequency: {input.samplingFrequency} Hz\n')
-    Dt = 1/input.samplingFrequency*1e3
-    t, vsoma, traces = sprt.setup_recordTraces(h,input.analysesopt.recordTraces,cell,Dt)
-    apcounts, aptimevectors, apinfo = sprt.setup_recordAPs(h,input.analysesopt.recordAPs,cell, threshold=input.analysesopt.apthresh, preorder= input.analysesopt.preordersecforplot)
-
-
-    # Simulate
-    # ----------------------------------------------------------
-    print('Simulating')
-    print(f'\t* dt: {input.dt} ms\n\t* duration: {input.duration} ms\n...')
-    timer_startsim = time.time()
-    h.dt = input.dt
-    h.celsius = input.celsius
-    h.finitialize(input.v0)
-    h.continuerun(input.duration)
-    timer_stopsim = time.time()
-    print(f"simulation finished in {timer_stopsim-timer_startsim:0.2f} s\n")
-
-
+    # TODO: check what happens if normal simulation is not selected?
+    # [ ]: clean code
     # Create folders:
     now = datetime.now()
     dt_string = now.strftime("%Y%m%d%H%M")
@@ -156,6 +191,10 @@ def optogeneticStimulation(input, verbose = False):
     if input.save_flag:
         os.makedirs(results_dir, exist_ok=True)
         os.makedirs(fig_dir, exist_ok=True)
+        if 'SD_eVstim' in input.simulationType:
+            figsdevstim.savefig(fig_dir+'/sdevstim.png')
+        if 'SD_Optogenx' in input.simulationType:
+            figsdoptogenx.savefig(fig_dir+'/sdoptogenx.png')
 
     # Analyse
     # ----------------------------------------------------------
@@ -170,7 +209,7 @@ def optogeneticStimulation(input, verbose = False):
     # Saving Data
     # ----------------------------------------------------------
     print('Saving Data')
-    sprt.SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos,timerstop-timerstart,seed,results_dir)
+    sprt.SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos,amps_SDeVstim,amps_SDoptogenx,timerstop-timerstart,seed,results_dir)
 
 if __name__ == '__main__':
     import Functions.setup as stp
@@ -192,25 +231,36 @@ if __name__ == '__main__':
 
 
 
-    input = stp.simParams({'duration':10, 'test_flag':False,'save_flag': True, 'plot_flag': True, 'stimopt':{'stim_type':['Optogxstim','eVstim']}})
+    input = stp.simParams({'duration':1000, 'test_flag':False,'save_flag': True, 'plot_flag': True, 'stimopt':{'stim_type':['Optogxstim','eVstim']}})
     input.cellsopt.neurontemplate = Cells.NeuronTemplates[0]
+    input.simulationType.extend(['SD_Optogenx'])
 
     input.stimopt.Ostimparams.field = eF.prepareDataforInterp(field,'ninterp')
     input.stimopt.Ostimparams.amp = 5000
-    input.stimopt.Ostimparams.delay = 2000
+    input.stimopt.Ostimparams.delay = 200
     input.stimopt.Ostimparams.pulseType = 'pulseTrain'
     input.stimopt.Ostimparams.dur = 5000-1e-6
     input.stimopt.Ostimparams.options = {'prf':0.01,'dc':0.05, 'phi': np.pi/2, 'xT': [0,0,100]}
 
 
-    input.stimopt.Estimparams.filepath = 'Inputs\ExtracellularPotentials\Reference - recessed\PotentialDistr-600um-20umMESH_refined_masked_structured.txt'
+    input.stimopt.Estimparams.filepath = 'Inputs\ExtracellularPotentials\Reference - recessed\PotentialDistr-600um-20umMESH_structured.txt'#'Inputs\ExtracellularPotentials\Reference - recessed\PotentialDistr-600um-20umMESH_refined_masked_structured.txt'
     input.stimopt.Estimparams.delay = 100
     input.stimopt.Estimparams.dur = 10
     input.stimopt.Estimparams.options['phi'] = np.pi/2
-    input.stimopt.Estimparams.options['xT'] = [0,0,100]
+    input.stimopt.Estimparams.options['xT'] = [0,0,250]
     input.cellsopt.extracellular = True
 
     input.analysesopt.shapeplots.append(dict(cvals_type='es'))
+
+    input.analysesopt.SDeVstim.options['simdur']=200
+    input.analysesopt.SDeVstim.options['delay']=100
+    input.analysesopt.SDeVstim.options['vinit']=-70
+    input.analysesopt.SDeVstim.durs = np.array([1e-3,1e2])
+
+    input.analysesopt.SDOptogenx.options['simdur']=200
+    input.analysesopt.SDOptogenx.options['delay']=100
+    input.analysesopt.SDOptogenx.options['vinit']=-70
+    input.analysesopt.SDOptogenx.durs = np.array([1e-3,1e1])
 
 
 
