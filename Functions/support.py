@@ -372,7 +372,7 @@ def convert_strtoseg(cell,mystr):
     str_split = mystr.split('(',1)
     sec = str_split[0]
 
-    secnr = float(sec.split('[',1)[-1][:-1])
+    secnr = int(sec.split('[',1)[-1][:-1])
     sec = sec.split('[',1)[0]
     loc = float(str_split[-1][:-1]) # :-1 to exclude closing bracket
     return getattr(cell,sec)[secnr](loc)
