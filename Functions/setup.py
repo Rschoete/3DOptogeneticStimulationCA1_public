@@ -12,6 +12,8 @@ class simParams(object):
         self.save_flag = True
         self.autosetPointer = True
 
+        self.simulationType = ['normal'] #'normal', 'SD_Optogenx', 'SD_eVstim'
+
         self.seed = datetime(2021, 12, 1, 13, 0).timestamp()
 
         self.duration = 1000
@@ -220,6 +222,22 @@ class analysesOptions(Dict):
         self.save_rasterplot = True
         self.rasterplotopt = {}
 
+        self.SDeVstim = Dict()
+        self.SDeVstim.durs = np.logspace(-3,3,7)
+        self.SDeVstim.startamp = 1
+        self.SDeVstim.cellrecloc = 'soma[0](0.5)'
+        self.SDeVstim.stimtype = 'cathodic'
+        self.SDeVstim.stimpointer = 'estim_xtra'
+        self.SDeVstim.options = dict(vinit = -65, simdur = 400)
+
+        self.SDOptogenx = Dict()
+        self.SDOptogenx.durs = np.logspace(-3,3,7)
+        self.SDOptogenx.startamp = 1000
+        self.SDOptogenx.cellrecloc = 'soma[0](0.5)'
+        self.SDOptogenx.stimtype = 'optogenx'
+        self.SDOptogenx.stimpointer = 'ostim_xtra'
+        self.SDOptogenx.options = dict(vinit = -65, simdur = 400)
+
 
 
 
@@ -242,7 +260,7 @@ def replaceNeuronSectionsandFunTostr(obj):
         for i,item in enumerate(obj):
             if type(item) in [list, dict]:
                 item = replaceNeuronSectionsandFunTostr(item)
-            elif type(item) == neuron.nrn.Section:
+            elif type(item) == neuron.nrn.Section or type(item) == neuron.nrn.Segment:
                 obj[i] = str(item)
             elif callable(item):
                 return inspect.getsource(item)
@@ -251,11 +269,11 @@ def replaceNeuronSectionsandFunTostr(obj):
         for key,val in obj.items():
             if type(val) in [list, dict]:
                 obj[key] = replaceNeuronSectionsandFunTostr(val)
-            elif type(val) == neuron.nrn.Section:
+            elif type(val) == neuron.nrn.Section or type(val) == neuron.nrn.Segment:
                 obj[key] = str(val)
             elif callable(val):
                 obj[key] =  inspect.getsource(val)
-    elif type(obj) == neuron.nrn.Section:
+    elif type(obj) == neuron.nrn.Section or type(obj) == neuron.nrn.Segment:
         return str(obj)
     elif callable(obj):
         return inspect.getsource(obj)
