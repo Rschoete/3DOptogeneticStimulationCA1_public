@@ -116,6 +116,7 @@ def SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,
                 noCorrectSave = False
             counter+=1
     print('\n!!Save successful !!')
+    return inputData, data
 
 def addOSinfo(cell,opsinmech,stiminfo):
     out = {}

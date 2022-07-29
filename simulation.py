@@ -199,8 +199,8 @@ def optogeneticStimulation(input, verbose = False):
     # Saving Data
     # ----------------------------------------------------------
     print('Saving Data')
-    sprt.SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos,amps_SDeVstim,amps_SDoptogenx,timerstop-timerstart,seed,results_dir)
-
+    inputdata,data = sprt.SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos,amps_SDeVstim,amps_SDoptogenx,timerstop-timerstart,seed,results_dir)
+    return inputdata, data
 if __name__ == '__main__':
     import Functions.setup as stp
     import matplotlib.pyplot as plt
