@@ -205,6 +205,8 @@ class analysesOptions(Dict):
         self.sec_plot_flag = True
         self.print_secpos = False
 
+        self.recordTotalOptogeneticCurrent = True
+
         self.shapeplots = [dict(cvals_type='os',colorscale='log10'),dict(cvals_type='gchr2bar_chr2h134r')]
         self.shapeplot_axsettings = {}
         self.save_shapeplots = True

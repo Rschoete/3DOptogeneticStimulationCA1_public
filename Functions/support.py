@@ -9,6 +9,9 @@ colorkeyval = {'soma':'tab:red', 'axon':'tomato','apical trunk':'tab:blue','apic
 
 def AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,aptimevectors,apinfo,amps_SDeVstim,amps_SDoptogenx,fig_dir):
 
+
+    iOptogenx = None
+
     # create colored section plot
     aopt = input.analysesopt
     if aopt.sec_plot_flag:
@@ -30,6 +33,9 @@ def AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,
     # create shapePlots
     print("\t* Shape plots")
     shapePlot(h,cell, aopt.shapeplots, aopt.shapeplot_axsettings, input.save_flag and aopt.save_shapeplots,figdir=fig_dir,extension=aopt.shapeplots_extension)
+
+    # recordTotalOptogeneticCurrent
+    iOptogenx = calciOptogenx(input,t,traces)
 
     # plot recorded traces
     if vsoma is not None:
@@ -60,7 +66,24 @@ def AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,
     if input.plot_flag:
         plt.show(block=False)
 
-def SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos,amps_SDeVstim,amps_SDoptogenx,runtime,seed,results_dir):
+    return iOptogenx
+
+def calciOptogenx(input,t,traces):
+    if input.analysesopt.recordTotalOptogeneticCurrent:
+        iOptogenx = {'abs':{'total':0}, 'spec':{'total':0}}
+        tintm = np.array(t)
+        idx = (tintm>=input.stimopt.Ostimparams.delay) & (tintm<=(input.stimopt.Ostimparams.delay+input.stimopt.Ostimparams.dur+1000))
+        for seg, icurrent in zip(traces['iOptogenx']['names'],traces['iOptogenx']['traces']):
+            icurrent = np.array(icurrent)
+            name = str(seg).split('.',1)[-1]
+            iOptogenx['spec'][name] = np.trapz(icurrent[idx],x=tintm[idx])
+            iOptogenx['abs'][name] = iOptogenx['spec'][name] * seg.area()
+            iOptogenx['abs']['total'] += iOptogenx['abs'][name]
+            iOptogenx['spec']['total'] += iOptogenx['spec'][name]
+        del traces['iOptogenx']
+    return iOptogenx
+
+def SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos,iOptogenx,amps_SDeVstim,amps_SDoptogenx,runtime,seed,results_dir):
     test_flag = input.test_flag
     # save input
     inputname = results_dir+'/input.json'
@@ -86,6 +109,7 @@ def SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,
     data['vsoma'] = np.array(vsoma) if vsoma is not None else None
     data['traces'] = addTracestoResults(traces,input.samplingFrequency/input.analysesopt['samplefrequency_traces']) if traces is not None else None
     data['Optogxstim'] = addOSinfo(cell, input.cellsopt['opsin_options']['opsinmech'],input.stimopt['Ostimparams'])
+    data['Optogxstim']['iOptogenx'] = iOptogenx
     data['eVstim'] = addESinfo(cell,input.stimopt['Estimparams'])
     data['SDcurve']= {'eVstim': amps_SDeVstim, 'Optogenx': amps_SDoptogenx}
     datasize = get_size(data)

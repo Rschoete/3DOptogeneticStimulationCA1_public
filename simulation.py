@@ -162,6 +162,14 @@ def optogeneticStimulation(input, verbose = False):
         print(f'Setup Analyses\n\t* sampling frequency: {input.samplingFrequency} Hz\n')
         Dt = 1/input.samplingFrequency*1e3
         t, vsoma, traces = sprt.setup_recordTraces(h,input.analysesopt.recordTraces,cell,Dt)
+        if input.analysesopt.recordTotalOptogeneticCurrent:
+            traces['iOptogenx']= {'traces':[], 'names':[]}
+            opsinmech = input.cellsopt.opsin_options.opsinmech
+            for sec in cell.allsec:
+                for seg in sec:
+                    if hasattr(seg,opsinmech):
+                        traces['iOptogenx']['traces'].append(h.Vector().record(getattr(seg,f'_ref_i_{opsinmech}'),Dt))
+                        traces['iOptogenx']['names'].append(seg)
         apcounts, aptimevectors, apinfo = sprt.setup_recordAPs(h,input.analysesopt.recordAPs,cell, threshold=input.analysesopt.apthresh, preorder= input.analysesopt.preordersecforplot)
 
 
@@ -190,7 +198,7 @@ def optogeneticStimulation(input, verbose = False):
     # ----------------------------------------------------------
     print('Analyses')
     # Create
-    sprt.AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,aptimevectors,apinfo,amps_SDeVstim,amps_SDoptogenx,fig_dir)
+    iOptogenx = sprt.AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,aptimevectors,apinfo,amps_SDeVstim,amps_SDoptogenx,fig_dir)
 
     # stop timer
     timerstop = time.time()
@@ -199,7 +207,7 @@ def optogeneticStimulation(input, verbose = False):
     # Saving Data
     # ----------------------------------------------------------
     print('Saving Data')
-    inputdata,data = sprt.SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos,amps_SDeVstim,amps_SDoptogenx,timerstop-timerstart,seed,results_dir)
+    inputdata,data = sprt.SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos, iOptogenx,amps_SDeVstim,amps_SDoptogenx,timerstop-timerstart,seed,results_dir)
     return inputdata, data
 if __name__ == '__main__':
     import Functions.setup as stp
@@ -221,11 +229,11 @@ if __name__ == '__main__':
 
 
 
-    input = stp.simParams({'duration':1000, 'test_flag':False,'save_flag': True, 'plot_flag': True})
+    input = stp.simParams({'duration':1000, 'test_flag':True,'save_flag': True, 'plot_flag': True})
 
-    input.stimopt.stim_type = ['Optogxstim','eVstim']
+    input.stimopt.stim_type = ['Optogxstim']
     input.cellsopt.neurontemplate = Cells.NeuronTemplates[0]
-    input.simulationType = ['normal','SD_eVstim','SD_Optogenx']
+    input.simulationType = ['normal']
     input.cellsopt.opsin_options.opsinlocations = 'apicalnoTuft'
 
     input.stimopt.Ostimparams.field = eF.prepareDataforInterp(field,'ninterp')
