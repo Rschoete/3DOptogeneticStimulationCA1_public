@@ -222,6 +222,7 @@ class analysesOptions(Dict):
         self.save_rasterplot = True
         self.rasterplotopt = {}
 
+        self.save_SDplot = True
         self.SDeVstim = Dict()
         self.SDeVstim.durs = np.logspace(-3,3,7)
         self.SDeVstim.startamp = 1

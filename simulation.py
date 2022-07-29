@@ -20,7 +20,7 @@ import Functions.support as sprt
 import Functions.globalFunctions.featExtract as featE
 
 def optogeneticStimulation(input, verbose = False):
-    print("date and time =", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+    print("\n\nDate and time =", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
     if not isinstance(input.simulationType,list):
         input.simulationType = [input.simulationType]
 
@@ -118,35 +118,31 @@ def optogeneticStimulation(input, verbose = False):
             del field
         t = np.arange(0,input.duration*1.1, input.dt/10)
         ostim_time,ostim_amp,totalos = eF.setXstim(cell.allsec, t, params['delay'], params['dur'], params['amp'], params['field'],params['structured'],params['pulseType'],stimtype = 'optical',netpyne=False, **params['options'])
+    print('')
 
-    #TODO: clean up SD code, perhaps move to analyses wrapper?
     # Perform simulations
     # ----------------------------------------------------------
+    if any([x in input.simulationType for x in ['SD_eVstim','SD_Optogenx']]):
+        print('Calculating Strength Duration Curves')
     amps_SDeVstim = None; amps_SDoptogenx = None
     if 'SD_eVstim' in input.simulationType:
-        print('SD_eVstim')
+        print('\t* SD_eVstim')
         SDcopt = input.analysesopt.SDeVstim
         params = input.stimopt.Estimparams
         SDcopt.cellrecloc = sprt.convert_strtoseg(cell,SDcopt.cellrecloc)
         amps_SDeVstim = featE.SD_curve_xstim(h,cell,SDcopt.durs,params['field'],SDcopt.startamp,SDcopt.cellrecloc,SDcopt.stimtype,stimpointer=SDcopt.stimpointer,estimoptions=params['options'], storeNone=False, **SDcopt.options)
-        print(amps_SDeVstim)
-        figsdevstim = plt.figure()
-        ax = plt.subplot(111)
-        ax.plot(SDcopt.durs,np.abs(amps_SDeVstim))
-        ax.set_yscale('log')
-        ax.set_xscale('log')
+        print('\t  ',[f"{dur:0.2e} -> {amp:0.2e}" for dur,amp in zip(SDcopt.durs,amps_SDeVstim)],'\n')
+
     if  'SD_Optogenx' in input.simulationType:
-        print('SD_Optogenx')
+        print('\t* SD_Optogenx')
         SDcopt = input.analysesopt.SDOptogenx
         params = input.stimopt.Ostimparams
         SDcopt.cellrecloc = sprt.convert_strtoseg(cell,SDcopt.cellrecloc)
         amps_SDoptogenx = featE.SD_curve_xstim(h,cell,SDcopt.durs,params['field'],SDcopt.startamp,SDcopt.cellrecloc,SDcopt.stimtype,stimpointer=SDcopt.stimpointer,estimoptions=params['options'], storeNone=False, **SDcopt.options)
-        print(amps_SDoptogenx)
-        figsdoptogenx = plt.figure()
-        ax = plt.subplot(111)
-        ax.plot(SDcopt.durs,np.abs(amps_SDoptogenx))
-        ax.set_yscale('log')
-        ax.set_xscale('log')
+        print('\t  ',[f"{dur:0.2e} -> {amp:0.2e}" for dur,amp in zip(SDcopt.durs,amps_SDoptogenx)],'\n')
+
+
+    t=None; vsoma=None; traces = None; apcounts = None; aptimevectors=None; apinfo=None
     if 'normal' in input.simulationType:
 
         if estim_amp is not None and len(estim_amp)>0:
@@ -159,7 +155,7 @@ def optogeneticStimulation(input, verbose = False):
             ostim_amp = h.Vector(ostim_amp)
             ostim_time = h.Vector(ostim_time)
             ostim_amp.play(h._ref_ostim_xtra, ostim_time, True) #True -> interpolate
-        print('')
+        print('Normal Simulation')
         # Analyses setup
         # ----------------------------------------------------------
         ## setup recording traces
@@ -181,8 +177,6 @@ def optogeneticStimulation(input, verbose = False):
         timer_stopsim = time.time()
         print(f"simulation finished in {timer_stopsim-timer_startsim:0.2f} s\n")
 
-    # TODO: check what happens if normal simulation is not selected?
-    # [ ]: clean code
     # Create folders:
     now = datetime.now()
     dt_string = now.strftime("%Y%m%d%H%M")
@@ -191,16 +185,12 @@ def optogeneticStimulation(input, verbose = False):
     if input.save_flag:
         os.makedirs(results_dir, exist_ok=True)
         os.makedirs(fig_dir, exist_ok=True)
-        if 'SD_eVstim' in input.simulationType:
-            figsdevstim.savefig(fig_dir+'/sdevstim.png')
-        if 'SD_Optogenx' in input.simulationType:
-            figsdoptogenx.savefig(fig_dir+'/sdoptogenx.png')
 
     # Analyse
     # ----------------------------------------------------------
     print('Analyses')
     # Create
-    sprt.AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,aptimevectors,apinfo,fig_dir)
+    sprt.AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,aptimevectors,apinfo,amps_SDeVstim,amps_SDoptogenx,fig_dir)
 
     # stop timer
     timerstop = time.time()
@@ -231,9 +221,12 @@ if __name__ == '__main__':
 
 
 
-    input = stp.simParams({'duration':1000, 'test_flag':False,'save_flag': True, 'plot_flag': True, 'stimopt':{'stim_type':['Optogxstim','eVstim']}})
+    input = stp.simParams({'duration':1000, 'test_flag':False,'save_flag': True, 'plot_flag': True})
+
+    input.stimopt.stim_type = ['Optogxstim','eVstim']
     input.cellsopt.neurontemplate = Cells.NeuronTemplates[0]
-    input.simulationType.extend(['SD_Optogenx'])
+    input.simulationType = ['normal','SD_eVstim','SD_Optogenx']
+    input.cellsopt.opsin_options.opsinlocations = 'apicalnoTuft'
 
     input.stimopt.Ostimparams.field = eF.prepareDataforInterp(field,'ninterp')
     input.stimopt.Ostimparams.amp = 5000
@@ -255,16 +248,15 @@ if __name__ == '__main__':
     input.analysesopt.SDeVstim.options['simdur']=200
     input.analysesopt.SDeVstim.options['delay']=100
     input.analysesopt.SDeVstim.options['vinit']=-70
-    input.analysesopt.SDeVstim.durs = np.array([1e-3,1e2])
+    input.analysesopt.SDeVstim.options['n_iters']=1
+    input.analysesopt.SDeVstim.durs = np.array([1e0,2e0])
 
-    input.analysesopt.SDOptogenx.options['simdur']=200
-    input.analysesopt.SDOptogenx.options['delay']=100
+    input.analysesopt.SDOptogenx.options['simdur']=150
+    input.analysesopt.SDOptogenx.options['delay']=50
     input.analysesopt.SDOptogenx.options['vinit']=-70
-    input.analysesopt.SDOptogenx.durs = np.array([1e-3,1e1])
+    input.analysesopt.SDOptogenx.options['n_iters']=1
+    input.analysesopt.SDOptogenx.durs = np.array([1e0,2e0])
 
-
-
-    input.cellsopt.opsin_options.opsinlocations = 'apicalnoTuft'
     optogeneticStimulation(input, verbose = True)
 
     if input.plot_flag:

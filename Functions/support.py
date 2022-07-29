@@ -7,7 +7,7 @@ import time
 
 colorkeyval = {'soma':'tab:red', 'axon':'tomato','apical trunk':'tab:blue','apical trunk ext':'royalblue', 'apical tuft': 'tab:green','apical obliques': 'tab:cyan', 'basal dendrites': 'tab:olive', 'unclassified':[0,0,0]}
 
-def AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,aptimevectors,apinfo,fig_dir):
+def AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,aptimevectors,apinfo,amps_SDeVstim,amps_SDoptogenx,fig_dir):
 
     # create colored section plot
     aopt = input.analysesopt
@@ -32,12 +32,30 @@ def AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,
     shapePlot(h,cell, aopt.shapeplots, aopt.shapeplot_axsettings, input.save_flag and aopt.save_shapeplots,figdir=fig_dir,extension=aopt.shapeplots_extension)
 
     # plot recorded traces
-    print("\t* Plot traces")
-    plot_traces(t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp, aopt.tracesplot_axsettings, input.save_flag and aopt.save_traces, figdir=fig_dir,extension=aopt.traces_extension)
+    if vsoma is not None:
+        print("\t* Plot traces")
+        plot_traces(t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp, aopt.tracesplot_axsettings, input.save_flag and aopt.save_traces, figdir=fig_dir,extension=aopt.traces_extension)
+    elif not "normal" in input.simulationType:
+        print('\t* no traces to plot because "normal" not in input.stimulationType')
+    else:
+        print("\t* no traces to plot, normally always should plot vsoma???")
 
     # rastergram
-    print("\t* Raster plot")
-    rasterplot(cell,aptimevectors,apinfo,np.array(t),input.save_flag and aopt.save_rasterplot, figdir = fig_dir, **aopt.rasterplotopt)
+    if aptimevectors is not None:
+        print("\t* Raster plot")
+        rasterplot(cell,aptimevectors,apinfo,np.array(t),input.save_flag and aopt.save_rasterplot, figdir = fig_dir, **aopt.rasterplotopt)
+    elif not "normal" in input.simulationType:
+        print('\t* no raster plot because "normal" not in input.stimulationType')
+
+    # SDcurve plots
+    if amps_SDeVstim is not None:
+        SDcopt = input.analysesopt.SDeVstim
+        SDcurveplot(SDcopt,amps_SDeVstim,'V_e stim amp [V]','eVstim',input.save_flag and aopt.save_SDplot, figdir = fig_dir)
+
+
+    if amps_SDoptogenx is not None:
+        SDcopt = input.analysesopt.SDOptogenx
+        SDcurveplot(SDcopt,amps_SDoptogenx,'Light Intensity stim amp [W/m2]','optogenx',input.save_flag and aopt.save_SDplot, figdir = fig_dir)
 
     if input.plot_flag:
         plt.show(block=False)
@@ -63,10 +81,10 @@ def SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,
     # save results
     resultsname = results_dir+'/data.json'
     data = {}
-    data['APs'] = addAPinfotoResults(apcounts,aptimevectors,apinfo)
-    data['t'] = np.array(t)
-    data['vsoma'] = np.array(vsoma)
-    data['traces'] = addTracestoResults(traces,input.samplingFrequency/input.analysesopt['samplefrequency_traces'])
+    data['APs'] = addAPinfotoResults(apcounts,aptimevectors,apinfo) if apcounts is not None else None
+    data['t'] = np.array(t) if t is not None else None
+    data['vsoma'] = np.array(vsoma) if vsoma is not None else None
+    data['traces'] = addTracestoResults(traces,input.samplingFrequency/input.analysesopt['samplefrequency_traces']) if traces is not None else None
     data['Optogxstim'] = addOSinfo(cell, input.cellsopt['opsin_options']['opsinmech'],input.stimopt['Ostimparams'])
     data['eVstim'] = addESinfo(cell,input.stimopt['Estimparams'])
     data['SDcurve']= {'eVstim': amps_SDeVstim, 'Optogenx': amps_SDoptogenx}
@@ -337,6 +355,18 @@ def setup_recordAPs(h,recordAPs,cell, threshold, preorder = False, colorkeyval=c
     apinfo['segnames'] = tuple(segnames)
     apinfo['colorlist']=tuple(colorlist)
     return tuple(apcounts), tuple(aptimevectors), apinfo
+
+def SDcurveplot(SDcopt,amps,ylabel,savename,save_flag, figdir,extension='png'):
+        fig = plt.figure()
+        ax = plt.subplot(111)
+        ax.plot(SDcopt.durs,np.abs(amps))
+        ax.set_yscale('log')
+        ax.set_xscale('log')
+        ax.set_ylabel(ylabel)
+        ax.set_xlabel('Duration [ms]')
+        if save_flag:
+            savename = f"{figdir}/SDplot_{savename}.{extension}"
+            fig.savefig(savename)
 
 def convert_strtoseclist(cell,location):
     if location.lower()=='soma':
