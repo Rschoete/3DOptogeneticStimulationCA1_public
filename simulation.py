@@ -160,9 +160,10 @@ def optogeneticStimulation(input, verbose = False):
         # ----------------------------------------------------------
         ## setup recording traces
         print(f'Setup Analyses\n\t* sampling frequency: {input.samplingFrequency} Hz\n')
+        aopt = input.analysesopt
         Dt = 1/input.samplingFrequency*1e3
-        t, vsoma, traces = sprt.setup_recordTraces(h,input.analysesopt.recordTraces,cell,Dt)
-        if input.analysesopt.recordTotalOptogeneticCurrent:
+        t, vsoma, traces = sprt.setup_recordTraces(h,aopt.recordTraces,cell,Dt)
+        if aopt.recordTotalOptogeneticCurrent:
             traces['iOptogenx']= {'traces':[], 'names':[]}
             opsinmech = input.cellsopt.opsin_options.opsinmech
             for sec in cell.allsec:
@@ -170,7 +171,7 @@ def optogeneticStimulation(input, verbose = False):
                     if hasattr(seg,opsinmech):
                         traces['iOptogenx']['traces'].append(h.Vector().record(getattr(seg,f'_ref_i_{opsinmech}'),Dt))
                         traces['iOptogenx']['names'].append(seg)
-        apcounts, aptimevectors, apinfo = sprt.setup_recordAPs(h,input.analysesopt.recordAPs,cell, threshold=input.analysesopt.apthresh, preorder= input.analysesopt.preordersecforplot)
+        apcounts, aptimevectors, apinfo, idx_sR = sprt.setup_recordAPs(h,aopt.recordAPs,cell, threshold=aopt.apthresh,succesRatio_seg= aopt.succesRatioOptions['succesRatio_seg'], preorder= aopt.preordersecforplot)
 
 
         # Simulate
@@ -198,7 +199,7 @@ def optogeneticStimulation(input, verbose = False):
     # ----------------------------------------------------------
     print('Analyses')
     # Create
-    iOptogenx = sprt.AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,aptimevectors,apinfo,amps_SDeVstim,amps_SDoptogenx,fig_dir)
+    iOptogenx, succes_ratio = sprt.AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,aptimevectors,apinfo,idx_sR,amps_SDeVstim,amps_SDoptogenx,fig_dir)
 
     # stop timer
     timerstop = time.time()
@@ -207,7 +208,7 @@ def optogeneticStimulation(input, verbose = False):
     # Saving Data
     # ----------------------------------------------------------
     print('Saving Data')
-    inputdata,data = sprt.SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos, iOptogenx,amps_SDeVstim,amps_SDoptogenx,timerstop-timerstart,seed,results_dir)
+    inputdata,data = sprt.SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos, iOptogenx, succes_ratio,amps_SDeVstim,amps_SDoptogenx,timerstop-timerstart,seed,results_dir)
     return inputdata, data
 if __name__ == '__main__':
     import Functions.setup as stp
@@ -240,7 +241,7 @@ if __name__ == '__main__':
     input.stimopt.Ostimparams.amp = 5000
     input.stimopt.Ostimparams.delay = 200
     input.stimopt.Ostimparams.pulseType = 'pulseTrain'
-    input.stimopt.Ostimparams.dur = 5000-1e-6
+    input.stimopt.Ostimparams.dur = 800-1e-6
     input.stimopt.Ostimparams.options = {'prf':0.01,'dc':0.05, 'phi': np.pi/2, 'xT': [0,0,100]}
 
 
@@ -264,6 +265,8 @@ if __name__ == '__main__':
     input.analysesopt.SDOptogenx.options['vinit']=-70
     input.analysesopt.SDOptogenx.options['n_iters']=1
     input.analysesopt.SDOptogenx.durs = np.array([1e0,2e0])
+
+    input.analysesopt.succesRatioOptions['window'] = 100
 
     optogeneticStimulation(input, verbose = True)
 

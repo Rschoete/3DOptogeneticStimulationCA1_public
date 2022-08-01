@@ -206,6 +206,8 @@ class analysesOptions(Dict):
         self.print_secpos = False
 
         self.recordTotalOptogeneticCurrent = True
+        self.recordSuccesRatio = True
+        self.succesRatioOptions = {'type':['eVstim','Optogenx'], 'window':[10], 'succesRatio_seg': 'soma[0](0.5)'}
 
         self.shapeplots = [dict(cvals_type='os',colorscale='log10'),dict(cvals_type='gchr2bar_chr2h134r')]
         self.shapeplot_axsettings = {}

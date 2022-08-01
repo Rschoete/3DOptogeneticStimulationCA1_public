@@ -7,7 +7,7 @@ import time
 
 colorkeyval = {'soma':'tab:red', 'axon':'tomato','apical trunk':'tab:blue','apical trunk ext':'royalblue', 'apical tuft': 'tab:green','apical obliques': 'tab:cyan', 'basal dendrites': 'tab:olive', 'unclassified':[0,0,0]}
 
-def AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,aptimevectors,apinfo,amps_SDeVstim,amps_SDoptogenx,fig_dir):
+def AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,aptimevectors,apinfo,idx_sR,amps_SDeVstim,amps_SDoptogenx,fig_dir):
 
 
     iOptogenx = None
@@ -36,6 +36,9 @@ def AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,
 
     # recordTotalOptogeneticCurrent
     iOptogenx = calciOptogenx(input,t,traces)
+
+    # succes Ratio
+    succes_ratio = calcSuccesratio(input,t,aptimevectors[idx_sR],ostim_time,ostim_amp,estim_time,estim_amp)
 
     # plot recorded traces
     if vsoma is not None:
@@ -66,9 +69,10 @@ def AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,
     if input.plot_flag:
         plt.show(block=False)
 
-    return iOptogenx
+    return iOptogenx, succes_ratio
 
 def calciOptogenx(input,t,traces):
+    iOptogenx = None
     if input.analysesopt.recordTotalOptogeneticCurrent:
         iOptogenx = {'abs':{'total':0}, 'spec':{'total':0}}
         tintm = np.array(t)
@@ -83,7 +87,50 @@ def calciOptogenx(input,t,traces):
         del traces['iOptogenx']
     return iOptogenx
 
-def SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos,iOptogenx,amps_SDeVstim,amps_SDoptogenx,runtime,seed,results_dir):
+def calcSuccesratio(input,t,spikeTimes,ostim_time,ostim_amp,estim_time,estim_amp):
+    succesRatio = None
+    if input.analysesopt.recordSuccesRatio:
+        succesRatio = {'succes':{},'spikeCountperstimRatio':{}}
+        sRopt = input.analysesopt.succesRatioOptions
+        tintm = np.array(t)
+        sT = np.array(spikeTimes)
+        sRopt['type'] = sRopt['type'] if isinstance(sRopt['type'],list) else [sRopt['type']]
+        sRopt['window'] = sRopt['window'] if isinstance(sRopt['window'],list) else [sRopt['window']]; sRopt['window'] = int(len(sRopt['type'])/len(sRopt['window']))*sRopt['window']
+        for sRtype,sRwindow in zip(sRopt['type'],sRopt['window']):
+            if sRtype=='eVstim':
+                stimtime = estim_time
+                stimamp = estim_amp
+                stimparams = input.stimopt.Estimparams
+            elif sRtype=='Optogenx':
+                stimtime = ostim_time
+                stimamp = ostim_amp
+                stimparams = input.stimopt.Ostimparams
+            else:
+                raise ValueError('input.analysesopt.succesRatioOptions["type"] can only be eVstim or Optogenx')
+
+            if stimtime is None or len(stimtime) == 0:
+                continue
+            else:
+                stimtime = np.array(stimtime)
+                stimamp = np.array(stimamp)
+
+            stimamp = np.abs(stimamp)
+            idx_on = (stimamp>0) & (np.roll(stimamp,1)<=0)
+            idx_off = (stimamp>0) & (np.roll(stimamp,-1)<=0)
+            t_on = stimtime[idx_on]
+            t_off = stimtime[idx_off]
+            if len(t_on)>len(t_off):
+                # if stimulation end of simulaton time t_off could miss a final time point
+                t_off = np.append(t_off,tintm[-1])
+            t_off_spd = np.minimum(t_off+sRwindow,np.append(t_on[1:],t[-1])) # window for spike detection should always be smaller than start of next pulse
+            intm = (sT>=t_on[:,None]) & (sT<t_off_spd[:,None])
+            succesRatio['succes'][sRtype] = np.sum(np.any(intm,1))/len(t_on)
+            succesRatio['spikeCountperstimRatio'][sRtype] = np.sum(intm)/len(t_on)
+
+
+    return succesRatio
+
+def SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos,iOptogenx, succes_ratio,amps_SDeVstim,amps_SDoptogenx,runtime,seed,results_dir):
     test_flag = input.test_flag
     # save input
     inputname = results_dir+'/input.json'
@@ -112,6 +159,7 @@ def SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,
     data['Optogxstim']['iOptogenx'] = iOptogenx
     data['eVstim'] = addESinfo(cell,input.stimopt['Estimparams'])
     data['SDcurve']= {'eVstim': amps_SDeVstim, 'Optogenx': amps_SDoptogenx}
+    data['succes_Ratio'] = succes_ratio
     datasize = get_size(data)
     if datasize>input.resultsmemlim:
         data['traces'] = f"excluded from saved file because mem limit {input.resultsmemlim} is exceeded {datasize} "
@@ -332,12 +380,12 @@ def rasterplot(cell,aptimevectors,apinfo,t,save_flag, figdir, markersize = 2, ma
         savename = f"{figdir}/rasterplot.{extension}"
         fig.savefig(savename)
 
-def setup_recordAPs(h,recordAPs,cell, threshold, preorder = False, colorkeyval=colorkeyval):
+def setup_recordAPs(h,recordAPs,cell, threshold, succesRatio_seg, preorder = False, colorkeyval=colorkeyval):
     apcounts = []
     aptimevectors = []
     segnames = []
     colorlist = []
-    
+    idx_sR = None
     if recordAPs == 'all':
         if preorder:
             seglist = [seg for sec in mphv2.allsec_preorder(h) for seg in sec]
@@ -348,10 +396,15 @@ def setup_recordAPs(h,recordAPs,cell, threshold, preorder = False, colorkeyval=c
             seglist = [sec(0.5) for sec in mphv2.allsec_preorder(h)]
         else:
             seglist = [sec(0.5) for sec in cell.allsec]
+    elif (recordAPs is None) and (succesRatio_seg is not None):
+        seglist = [convert_strtoseg(succesRatio_seg)]
+        idx_sR = 0
     else:
         raise ValueError('recordAPs: can only be "all" or "all0.5"')
     for seg in seglist:
         segnames.append(str(seg).split('.',1)[-1])
+        if segnames[-1] == succesRatio_seg:
+            idx_sR = len(segnames)-1
         timevector = h.Vector()
         apc = h.APCount(seg)
         apc.thresh = threshold
@@ -359,6 +412,7 @@ def setup_recordAPs(h,recordAPs,cell, threshold, preorder = False, colorkeyval=c
         apcounts.append(apc)
         aptimevectors.append(timevector)
 
+        #store coloers for raster plot
         sec = seg.sec
         if 'soma' in str(sec):
             colorlist.append(colorkeyval['soma'])
@@ -379,7 +433,7 @@ def setup_recordAPs(h,recordAPs,cell, threshold, preorder = False, colorkeyval=c
     apinfo = {}
     apinfo['segnames'] = tuple(segnames)
     apinfo['colorlist']=tuple(colorlist)
-    return tuple(apcounts), tuple(aptimevectors), apinfo
+    return tuple(apcounts), tuple(aptimevectors), apinfo, idx_sR
 
 def SDcurveplot(SDcopt,amps,ylabel,savename,save_flag, figdir,extension='png'):
         fig = plt.figure()
