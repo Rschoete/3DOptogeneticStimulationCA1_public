@@ -53,6 +53,7 @@ class NeuronTemplate:
         self.templatename = templatename
         self.morphologylocation = morphologylocation
         self.replace_axon = str(replace_axon).lower()
+        self.celsius = 34
         self.ID=ID
         self.ty=ty
         self.col=col

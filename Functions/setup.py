@@ -20,7 +20,7 @@ class simParams(object):
         self.samplingFrequency = 10000 #Hz
         self.dt = 0.025
         self.dt_adapttopd = True
-        self.celsius = 20
+        self.celsius = None # if none then use cell.celsius 
         self.defaultThreshold = -10
         self.v0 = -65
 

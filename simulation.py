@@ -42,7 +42,6 @@ def optogeneticStimulation(input, verbose = False):
     # ----------------------------------------------------------
     print('\nCell setup')
     ##Load cell
-    h.celsius = input.celsius
     if input.cellsopt.neurontemplate in Cells.NeuronTemplates:
         print(f'Loading cell: {input.cellsopt.neurontemplate}')
         cell = getattr(Cells,input.cellsopt.neurontemplate)(**input.cellsopt.init_options)
@@ -50,6 +49,14 @@ def optogeneticStimulation(input, verbose = False):
     else:
         raise ValueError(f"input.neuronInput = {input.cellsopt.neurontemplate} is invalid. Possible templates are  {Cells.NeuronTemplates}")
 
+    ## set temperature
+    if input.celsius is None:
+        print(f'\t* h.celsius = cell.celsius = {cell.celsius}')
+        h.celsius = cell.celsius
+        input.celsius = cell.celsius
+    else:
+        print(f'\t* h.celsius = input.celsius = {input.celsius}')
+        h.celsius = input.celsius
 
     ## Plugin opsin
     oopt = input.cellsopt.opsin_options
@@ -250,7 +257,7 @@ if __name__ == '__main__':
 
     input.stimopt.stim_type = ['Optogxstim']
     input.cellsopt.neurontemplate = Cells.NeuronTemplates[0]
-    input.simulationType = ['SD_Optogenx']
+    input.simulationType = ['normal']
     input.cellsopt.opsin_options.opsinlocations = 'apicalnoTuft'
     input.v0 = -70
 
