@@ -233,7 +233,8 @@ class analysesOptions(Dict):
         self.SDeVstim.cellrecloc = 'soma[0](0.5)'
         self.SDeVstim.stimtype = 'cathodic'
         self.SDeVstim.stimpointer = 'estim_xtra'
-        self.SDeVstim.options = dict(vinit = -65, simdur = 400)
+        self.SDeVstim.nr_pulseOI = 1
+        self.SDeVstim.options = dict(vinit = -65, simdur = 400, dc_sdc=0.5, n_iters = 7)
 
         self.SDOptogenx = Dict()
         self.SDOptogenx.durs = np.logspace(-3,3,7)
@@ -241,7 +242,8 @@ class analysesOptions(Dict):
         self.SDOptogenx.cellrecloc = 'soma[0](0.5)'
         self.SDOptogenx.stimtype = 'optogenx'
         self.SDOptogenx.stimpointer = 'ostim_xtra'
-        self.SDOptogenx.options = dict(vinit = -65, simdur = 400)
+        self.SDOptogenx.nr_pulseOI = 1
+        self.SDOptogenx.options = dict(vinit = -65, simdur = 400, dc_sdc=0.5, n_iters = 7) # for scale_initsearch = 10 error is 1/(2**7)
 
 
 

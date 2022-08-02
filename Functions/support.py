@@ -438,7 +438,7 @@ def setup_recordAPs(h,recordAPs,cell, threshold, succesRatio_seg, preorder = Fal
 def SDcurveplot(SDcopt,amps,ylabel,savename,save_flag, figdir,extension='png'):
         fig = plt.figure()
         ax = plt.subplot(111)
-        ax.plot(SDcopt.durs,np.abs(amps))
+        ax.plot(SDcopt.durs,np.abs([x if x is not None else np.nan for x in amps]))
         ax.set_yscale('log')
         ax.set_xscale('log')
         ax.set_ylabel(ylabel)

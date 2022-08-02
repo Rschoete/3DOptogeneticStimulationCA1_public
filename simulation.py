@@ -130,16 +130,16 @@ def optogeneticStimulation(input, verbose = False):
         SDcopt = input.analysesopt.SDeVstim
         params = input.stimopt.Estimparams
         SDcopt.cellrecloc = sprt.convert_strtoseg(cell,SDcopt.cellrecloc)
-        amps_SDeVstim = featE.SD_curve_xstim(h,cell,SDcopt.durs,params['field'],SDcopt.startamp,SDcopt.cellrecloc,SDcopt.stimtype,stimpointer=SDcopt.stimpointer,estimoptions=params['options'], storeNone=False, **SDcopt.options)
-        print('\t  ',[f"{dur:0.2e} -> {amp:0.2e}" for dur,amp in zip(SDcopt.durs,amps_SDeVstim)],'\n')
+        amps_SDeVstim = featE.SD_curve_xstim(h,cell,SDcopt.durs,params['field'],SDcopt.startamp,SDcopt.cellrecloc,SDcopt.stimtype,stimpointer=SDcopt.stimpointer,nr_pulseOI=SDcopt.nr_pulseOI,estimoptions=params['options'], **SDcopt.options)
+        print('\t  ',[f"{dur:0.2e} -> {amp:0.2e}" if amp is not None else f"{dur:0.2e} -> None" for dur,amp in zip(SDcopt.durs,amps_SDeVstim)],'\n')
 
     if  'SD_Optogenx' in input.simulationType:
         print('\t* SD_Optogenx')
         SDcopt = input.analysesopt.SDOptogenx
         params = input.stimopt.Ostimparams
         SDcopt.cellrecloc = sprt.convert_strtoseg(cell,SDcopt.cellrecloc)
-        amps_SDoptogenx = featE.SD_curve_xstim(h,cell,SDcopt.durs,params['field'],SDcopt.startamp,SDcopt.cellrecloc,SDcopt.stimtype,stimpointer=SDcopt.stimpointer,estimoptions=params['options'], storeNone=False, **SDcopt.options)
-        print('\t  ',[f"{dur:0.2e} -> {amp:0.2e}" for dur,amp in zip(SDcopt.durs,amps_SDoptogenx)],'\n')
+        amps_SDoptogenx = featE.SD_curve_xstim(h,cell,SDcopt.durs,params['field'],SDcopt.startamp,SDcopt.cellrecloc,SDcopt.stimtype,stimpointer=SDcopt.stimpointer,nr_pulseOI=SDcopt.nr_pulseOI,estimoptions=params['options'], **SDcopt.options)
+        print('\t  ',[f"{dur:0.2e} -> {amp:0.2e}" if amp is not None else f"{dur:0.2e} -> None" for dur,amp in zip(SDcopt.durs,amps_SDoptogenx)],'\n')
 
 
     t=None; vsoma=None; traces = None; apcounts = None; aptimevectors=None; apinfo=None
@@ -230,19 +230,20 @@ if __name__ == '__main__':
 
 
 
-    input = stp.simParams({'duration':1000, 'test_flag':True,'save_flag': True, 'plot_flag': True})
+    input = stp.simParams({'duration':4500, 'test_flag':True,'save_flag': True, 'plot_flag': True})
 
     input.stimopt.stim_type = ['Optogxstim']
     input.cellsopt.neurontemplate = Cells.NeuronTemplates[0]
     input.simulationType = ['normal']
     input.cellsopt.opsin_options.opsinlocations = 'apicalnoTuft'
+    input.v0 = -70
 
     input.stimopt.Ostimparams.field = eF.prepareDataforInterp(field,'ninterp')
-    input.stimopt.Ostimparams.amp = 5000
-    input.stimopt.Ostimparams.delay = 200
+    input.stimopt.Ostimparams.amp = 600.2109
+    input.stimopt.Ostimparams.delay = 100
     input.stimopt.Ostimparams.pulseType = 'pulseTrain'
-    input.stimopt.Ostimparams.dur = 800-1e-6
-    input.stimopt.Ostimparams.options = {'prf':0.01,'dc':0.05, 'phi': np.pi/2, 'xT': [0,0,100]}
+    input.stimopt.Ostimparams.dur = 4000-1e-6
+    input.stimopt.Ostimparams.options = {'prf':1/2000,'dc':1/20000, 'phi': np.pi/2, 'xT': [0,0,100]}
 
 
     input.stimopt.Estimparams.filepath = 'Inputs\ExtracellularPotentials\Reference - recessed\PotentialDistr-600um-20umMESH_structured.txt'#'Inputs\ExtracellularPotentials\Reference - recessed\PotentialDistr-600um-20umMESH_refined_masked_structured.txt'
@@ -260,11 +261,14 @@ if __name__ == '__main__':
     input.analysesopt.SDeVstim.options['n_iters']=1
     input.analysesopt.SDeVstim.durs = np.array([1e0,2e0])
 
-    input.analysesopt.SDOptogenx.options['simdur']=150
-    input.analysesopt.SDOptogenx.options['delay']=50
+    input.analysesopt.SDOptogenx.options['simdur']=1000
+    input.analysesopt.SDOptogenx.options['delay']=100
     input.analysesopt.SDOptogenx.options['vinit']=-70
-    input.analysesopt.SDOptogenx.options['n_iters']=1
-    input.analysesopt.SDOptogenx.durs = np.array([1e0,2e0])
+    input.analysesopt.SDOptogenx.options['n_iters']=7
+    input.analysesopt.SDOptogenx.options['verbose'] = True
+    input.analysesopt.SDOptogenx.durs = np.logspace(-3,3,7)
+    input.analysesopt.SDOptogenx.options['dc_sdc'] = input.analysesopt.SDOptogenx.durs/2000
+    input.analysesopt.SDOptogenx.nr_pulseOI = 2
 
     input.analysesopt.succesRatioOptions['window'] = 100
 
