@@ -95,7 +95,7 @@ def optogeneticStimulation(input, verbose = False):
     print('\nLoadingFields')
     ## Load fields
     # Potential field
-    estim_amp = []; estim_time = []; totales = 0
+    estim_amp = []; estim_time = []; totales = 0; edts = []; esimtimes = []
     if 'eVstim' in input.stimopt.stim_type:
         print('\t* extracellular electrical stimulation')
         params = input.stimopt.Estimparams
@@ -105,10 +105,11 @@ def optogeneticStimulation(input, verbose = False):
             del field
         t = np.arange(0,input.duration*1.1, input.dt/10)
         estim_time,estim_amp,totales = eF.setXstim(cell.allsec, t, params['delay'], params['dur'], params['amp'], params['field'],params['structured'],params['pulseType'],stimtype='electrical',netpyne=False, **params['options'])
+        edts,esimtimes = input.stimopt.get_dt_simintm('Estimparams',input.dt,fs=20)
 
 
     # Optical field
-    ostim_amp = []; ostim_time = []; totalos = 0
+    ostim_amp = []; ostim_time = []; totalos = 0; edts = []; esimtimes = []
     if 'Optogxstim' in input.stimopt.stim_type:
         print('\t* Optogenetics stimulation')
         params = input.stimopt.Ostimparams
@@ -118,6 +119,7 @@ def optogeneticStimulation(input, verbose = False):
             del field
         t = np.arange(0,input.duration*1.1, input.dt/10)
         ostim_time,ostim_amp,totalos = eF.setXstim(cell.allsec, t, params['delay'], params['dur'], params['amp'], params['field'],params['structured'],params['pulseType'],stimtype = 'optical',netpyne=False, **params['options'])
+        odts,osimtimes = input.stimopt.get_dt_simintm('Ostimparams',input.dt,fs=20)
     print('')
 
     # Perform simulations
@@ -177,14 +179,29 @@ def optogeneticStimulation(input, verbose = False):
         # Simulate
         # ----------------------------------------------------------
         print('Simulating')
-        print(f'\t* dt: {input.dt} ms\n\t* duration: {input.duration} ms\n...')
-        timer_startsim = time.time()
-        h.dt = input.dt
-        h.celsius = input.celsius
-        h.finitialize(input.v0)
-        h.continuerun(input.duration)
-        timer_stopsim = time.time()
-        print(f"simulation finished in {timer_stopsim-timer_startsim:0.2f} s\n")
+        if input.dt_adapttopd:
+            print(f'\t* Piecewise simulation total simtime: {input.duration} ms')
+            dts,simdurs = sprt.get_dts_simdurs(input.duration,input.dt,edts,esimtimes,odts,osimtimes)
+            timer_startsim = time.time()
+            h.celsius = input.celsius
+            h.finitialize(input.v0)
+            for i, (dt,simdur) in enumerate(zip(dts,simdurs)):
+                print(f'\t {i+1}/{len(dts)}, dt: {dt} ms  -  duration: {simdur} ms')
+                h.dt = dt
+                h.continuerun(simdur)
+            timer_stopsim = time.time()
+            print(f"simulation finished in {timer_stopsim-timer_startsim:0.2f} s\n")
+            input.dt = dts
+            input.duration = simdurs
+        else:
+            print(f'\t* dt: {input.dt} ms\n\t* duration: {input.duration} ms\n...')
+            timer_startsim = time.time()
+            h.dt = input.dt
+            h.celsius = input.celsius
+            h.finitialize(input.v0)
+            h.continuerun(input.duration)
+            timer_stopsim = time.time()
+            print(f"simulation finished in {timer_stopsim-timer_startsim:0.2f} s\n")
 
     # Create folders:
     now = datetime.now()

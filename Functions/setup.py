@@ -19,6 +19,7 @@ class simParams(object):
         self.duration = 1000
         self.samplingFrequency = 10000 #Hz
         self.dt = 0.025
+        self.dt_adapttopd = True
         self.celsius = 20
         self.defaultThreshold = -10
         self.v0 = -65
@@ -160,6 +161,32 @@ class stimOptions(Dict):
         self.Estimparams.options =  {}
 
         self._init_flag = False
+
+    def get_dt_simintm(self,key,dt_init,fs=20):
+        params = getattr(self,key)
+        if params.pulseType == 'singleSquarePulse':
+            dtlist = [dt_init,min(dt_init,params.dur/fs)]
+            simtimelist = [params.delay,params.delay+params.dur*2]
+        elif params.pulseType == 'pulseTrain':
+            prf = params.options['prf']
+            dc = params.options['dc']
+            if dc>0.5:
+                print('!!!!!!!!!! piecewise dt adjustment only works for dc<=0.5, (dt determined based on on time)!!!!!!!!')
+            spd = dc/prf#single pulse duration
+            dt = min(dt_init,spd/fs)
+
+            dtlist = [dt,dt_init]
+            simtimelist = [spd*2,1/prf]
+            while simtimelist[-1]<params.dur:
+                dtlist.extend([dt,dt_init])
+                simtimelist.extend([simtimelist[-1]+x for x in [spd*2,1/prf]])
+            simtimelist = [params.delay+x for x in simtimelist if x<=params.dur]
+            dtlist = [dt_init]+dtlist[:len(simtimelist)]
+            simtimelist = [params.delay]+simtimelist
+        else:
+            raise NotImplementedError
+
+        return dtlist,simtimelist
     def __setattr__(self, key, value):
         #new setattr because we want stim_type to be always converted to array
         #only check if not in initialization
