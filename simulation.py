@@ -42,6 +42,7 @@ def optogeneticStimulation(input, verbose = False):
     # ----------------------------------------------------------
     print('\nCell setup')
     ##Load cell
+    h.celsius = input.celsius
     if input.cellsopt.neurontemplate in Cells.NeuronTemplates:
         print(f'Loading cell: {input.cellsopt.neurontemplate}')
         cell = getattr(Cells,input.cellsopt.neurontemplate)(**input.cellsopt.init_options)
@@ -183,7 +184,6 @@ def optogeneticStimulation(input, verbose = False):
             print(f'\t* Piecewise simulation total simtime: {input.duration} ms')
             dts,simdurs = sprt.get_dts_simdurs(input.duration,input.dt,edts,esimtimes,odts,osimtimes)
             timer_startsim = time.time()
-            h.celsius = input.celsius
             h.finitialize(input.v0)
             for i, (dt,simdur) in enumerate(zip(dts,simdurs)):
                 print(f'\t {i+1}/{len(dts)}, dt: {dt} ms  -  duration: {simdur} ms')
@@ -197,7 +197,6 @@ def optogeneticStimulation(input, verbose = False):
             print(f'\t* dt: {input.dt} ms\n\t* duration: {input.duration} ms\n...')
             timer_startsim = time.time()
             h.dt = input.dt
-            h.celsius = input.celsius
             h.finitialize(input.v0)
             h.continuerun(input.duration)
             timer_stopsim = time.time()
@@ -251,12 +250,12 @@ if __name__ == '__main__':
 
     input.stimopt.stim_type = ['Optogxstim']
     input.cellsopt.neurontemplate = Cells.NeuronTemplates[0]
-    input.simulationType = ['normal']
+    input.simulationType = ['SD_Optogenx']
     input.cellsopt.opsin_options.opsinlocations = 'apicalnoTuft'
     input.v0 = -70
 
     input.stimopt.Ostimparams.field = eF.prepareDataforInterp(field,'ninterp')
-    input.stimopt.Ostimparams.amp = 600.2109
+    input.stimopt.Ostimparams.amp = 542
     input.stimopt.Ostimparams.delay = 100
     input.stimopt.Ostimparams.pulseType = 'pulseTrain'
     input.stimopt.Ostimparams.dur = 4000-1e-6
@@ -283,7 +282,8 @@ if __name__ == '__main__':
     input.analysesopt.SDOptogenx.options['vinit']=-70
     input.analysesopt.SDOptogenx.options['n_iters']=7
     input.analysesopt.SDOptogenx.options['verbose'] = True
-    input.analysesopt.SDOptogenx.durs = np.logspace(-3,3,7)
+    input.analysesopt.SDOptogenx.startamp = 542
+    input.analysesopt.SDOptogenx.durs = np.logspace(-1,3,7)
     input.analysesopt.SDOptogenx.options['dc_sdc'] = input.analysesopt.SDOptogenx.durs/2000
     input.analysesopt.SDOptogenx.nr_pulseOI = 2
 
