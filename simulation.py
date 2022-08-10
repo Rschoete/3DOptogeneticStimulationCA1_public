@@ -71,7 +71,12 @@ def optogeneticStimulation(input, verbose = False):
 
         if oopt.distribution_source_hdistance is not None:
             oopt.distribution_source_hdistance = sprt.convert_strtoseg(oopt.distribution_source_hdistance)
-        seglist, values = cell.distribute_mechvalue(oopt.distribution,method=oopt.distribution_method,source_hdistance = oopt.distribution_source_hdistance)
+        seglist, values = cell.distribute_mechvalue(oopt.distribution,seclist = oopt.opsinlocations,method=oopt.distribution_method,source_hdistance = oopt.distribution_source_hdistance)
+        G_total,seglist,values = cell.calc_Gmax_mechvalue('gchr2bar_'+oopt.opsinmech,values = values, seglist = seglist)
+        if oopt.Gmax_total is not None:
+            values = [val*oopt.Gmax_total/G_total for val in values]
+        else:
+            oopt.Gmax_total = G_total
         cell.updateMechValue(seglist,values,'gchr2bar_'+oopt.opsinmech)
 
 
@@ -253,19 +258,21 @@ if __name__ == '__main__':
 
 
 
-    input = stp.simParams({'duration':4500, 'test_flag':True,'save_flag': True, 'plot_flag': True})
+    input = stp.simParams({'duration':1500, 'test_flag':True,'save_flag': True, 'plot_flag': False})
 
     input.stimopt.stim_type = ['Optogxstim']
     input.cellsopt.neurontemplate = Cells.NeuronTemplates[0]
     input.simulationType = ['normal']
     input.cellsopt.opsin_options.opsinlocations = 'apicalnoTuft'
+    input.cellsopt.opsin_options.Gmax_total = 0.1 #uS
+    input.cellsopt.opsin_options.distribution = lambda x: 10*(np.exp(-np.linalg.norm(np.array(x)-[0,0,0])/200))
     input.v0 = -70
 
     input.stimopt.Ostimparams.field = eF.prepareDataforInterp(field,'ninterp')
     input.stimopt.Ostimparams.amp = 542
     input.stimopt.Ostimparams.delay = 100
-    input.stimopt.Ostimparams.pulseType = 'pulseTrain'
-    input.stimopt.Ostimparams.dur = 4000-1e-6
+    input.stimopt.Ostimparams.pulseType = 'singleSquarePulse'
+    input.stimopt.Ostimparams.dur = 500
     input.stimopt.Ostimparams.options = {'prf':1/2000,'dc':1/20000, 'phi': np.pi/2, 'xT': [0,0,100]}
 
 
@@ -289,9 +296,9 @@ if __name__ == '__main__':
     input.analysesopt.SDOptogenx.options['vinit']=-70
     input.analysesopt.SDOptogenx.options['n_iters']=7
     input.analysesopt.SDOptogenx.options['verbose'] = True
-    input.analysesopt.SDOptogenx.startamp = 542
-    input.analysesopt.SDOptogenx.durs = np.logspace(-1,3,7)
-    input.analysesopt.SDOptogenx.options['dc_sdc'] = input.analysesopt.SDOptogenx.durs/2000
+    input.analysesopt.SDOptogenx.startamp = 1000
+    input.analysesopt.SDOptogenx.durs = np.append(np.logspace(-3,2,6),500)
+    input.analysesopt.SDOptogenx.options['dc_sdc'] = input.analysesopt.SDOptogenx.durs/3500
     input.analysesopt.SDOptogenx.nr_pulseOI = 2
 
     input.analysesopt.succesRatioOptions['window'] = 100

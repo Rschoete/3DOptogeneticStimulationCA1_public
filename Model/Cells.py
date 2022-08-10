@@ -288,6 +288,19 @@ class NeuronTemplate:
         else:
             raise ValueError('possible methods are 3d or hdistance')
         return seglist, values
+    def calc_Gmax_mechvalue(self, mech,values = None, seglist = 'all'):
+        conv = 1e-5 #conversion factor assume value is in mS/cm2 area in um2 -> G in uS
+        if seglist=='all':
+            seglist = [seg  for sec in self.allsec for seg in sec if hasattr(seg,mech)]
+        if values is None:
+            values = [getattr(seg,mech) for seg in seglist]
+        # trim lists
+        if len(seglist)!=len(values):
+            raise ValueError('seglist and values should have same length')
+
+        seglist,values = map(lambda x: list(x),zip(*filter(lambda x: hasattr(x[0],mech), zip(seglist,values))))
+        G = sum([seg.area()*val*conv for seg,val in zip(seglist,values)])
+        return G, seglist, values
 
 
 class CA1_PC_cAC_sig5(NeuronTemplate):

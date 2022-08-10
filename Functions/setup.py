@@ -99,8 +99,9 @@ class cellsOptions(Dict):
         self.opsin_options = Dict()
         self.opsin_options.opsinlocations = 'soma' #'soma', 'all', 'apic' or 'apical', 'dend' or 'basal', 'alldend', 'axon', 'apicaltrunk', 'apicaltrunk_ext', 'apicaltuft', 'obliques', [specific list]
         self.opsin_options.opsinmech = 'chr2h134r'
+        self.opsin_options.Gmax_total = None #uS if none then not included in calculation if value => gbar are rescaled so total G is Gmax_total
         self.opsin_options.set_pointer_xtra = True # directly make connection with xtra mechanism upon opsin insertion
-        self.opsin_options.distribution = lambda x: 10 # example of uniform
+        self.opsin_options.distribution = lambda x: 10 # example of uniform #distribution = lambda seg_xyz: 5*rv.pdf(np.linalg.norm(np.array(seg_xyz)-source))/rv.pdf(0) with source [x,y,z] and rv is truncnorm from scipy
         self.opsin_options.distribution_method = '3d'  # '3d' or 'hdistance'
         self.opsin_options.distribution_source_hdistance = None # or e.g. 'soma[0](0.5)'
 
