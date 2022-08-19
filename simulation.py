@@ -246,14 +246,26 @@ if __name__ == '__main__':
     xlims = [-1000,1000]
     ylims = [-1000,1000]
     zlims = [-1000,1000]
-    nx= 100
-    ny = 100
-    nz = 100
-    xX,xY,xZ = np.meshgrid(np.linspace(xlims[0],xlims[1],nx),np.linspace(ylims[0],ylims[1],ny), np.linspace(zlims[0],zlims[1],nz),indexing='ij')
-    data = np.array((xX.ravel(),xY.ravel(),xZ.ravel())).T
+    nx= 101
+    ny = 101
+    nz = 101
+    fieldtype = '2D'
     #myfun = lambda x,y,z: x**2+y**2+(z-2.5)
+    xX,xY,xZ = np.meshgrid(np.linspace(xlims[0],xlims[1],nx),np.linspace(ylims[0],ylims[1],ny), np.linspace(zlims[0],zlims[1],nz),indexing='ij')
     myfun = np.vectorize(lambda x,y,z,a: 1 if ((z>=0 and z<=10) and (x**2+y**2)<100**2) else (10/z)**(2/a) if (z>10 and (x**2+y**2)<100**2) else ((10/z)**(2/a)*100**(2/a)/(x**2+y**2)**(1/a)) if z>10 else ((1/(z+10))**(2/a)*100**(2/a)/(x**2+y**2)**(1/a)) if (z>0 and z<=10) else 1e-6 )
-    field = np.hstack((data,1000*myfun(data[:,0],data[:,1],data[:,2],1)[:,None]))
+    # 3D field
+    if fieldtype == '3D':
+        data = np.array((xX.ravel(),xY.ravel(),xZ.ravel())).T
+        field = np.hstack((data,1000*myfun(data[:,0],data[:,1],data[:,2],1)[:,None]))
+    else :
+        idx = int(np.ceil(ny/2)-1)
+        xX = xX[:,idx,:]
+        xY = xY[:,idx,:]
+        xZ= xZ[:,idx,:]
+        data = np.array((xX.ravel(),xY.ravel(),xZ.ravel())).T
+        field = np.hstack((data,1000*myfun(data[:,0],data[:,1],data[:,2],1)[:,None]))
+        field = field[:,[0,2,3]]
+
 
 
 
@@ -264,7 +276,7 @@ if __name__ == '__main__':
     input.cellsopt.neurontemplate = Cells.NeuronTemplates[0]
     input.simulationType = ['normal']
     input.cellsopt.opsin_options.opsinlocations = 'apicalnoTuft'
-    input.cellsopt.opsin_options.Gmax_total = 0.1 #uS
+    input.cellsopt.opsin_options.Gmax_total = None #uS
     input.cellsopt.opsin_options.distribution = lambda x: 10*(np.exp(-np.linalg.norm(np.array(x)-[0,0,0])/200))
     input.v0 = -70
 
