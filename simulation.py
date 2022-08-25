@@ -156,6 +156,18 @@ def optogeneticStimulation(input, verbose = False):
         amps_SDoptogenx = featE.SD_curve_xstim(h,cell,SDcopt.durs,params['field'],SDcopt.startamp,SDcopt.cellrecloc,SDcopt.stimtype,stimpointer=SDcopt.stimpointer,nr_pulseOI=SDcopt.nr_pulseOI,estimoptions=params['options'], **SDcopt.options)
         print('\t  ',[f"{dur:0.2e} -> {amp:0.2e}" if amp is not None else f"{dur:0.2e} -> None" for dur,amp in zip(SDcopt.durs,amps_SDoptogenx)],'\n')
 
+    if any([x in input.simulationType for x in ['VTA_eVstim','VTA_Optogenx']]):
+        print('Calculating VTA')
+    pos_VTAeVstim = None; pos_VTAOptogenx = None
+    if 'VTA_Optogenx' in input.simulationType:
+        print('\t* VTA_Optogenx')
+        VTAopt = input.analysesopt.VTAOptogenx
+        params = input.stimopt.Ostimparams
+        VTAopt.cellrecloc = sprt.convert_strtoseg(cell,VTAopt.cellrecloc)
+        pos_VTAOptogenx = featE.VTA_xstim(h,cell,VTAopt.startpos,VTAopt.searchdir,params['field'],params['amp'],params['dur'],VTAopt.cellrecloc,VTAopt.stimtype,stimpointer=VTAopt.stimpointer,nr_pulseOI=VTAopt.nr_pulseOI,estimoptions=params['options'], **VTAopt.options)
+        print(f'\t amp={params["amp"]},dur = {params["dur"]}')
+        print('\t  ',[f"{spos} -> {pos}" if pos is not None else f"{spos} -> None" for spos,pos in zip(VTAopt.startpos,pos_VTAOptogenx)],'\n')
+
 
     t=None; vsoma=None; traces = None; apcounts = None; aptimevectors=None; apinfo=None
     if 'normal' in input.simulationType:
@@ -227,7 +239,7 @@ def optogeneticStimulation(input, verbose = False):
     # ----------------------------------------------------------
     print('Analyses')
     # Create
-    iOptogenx, succes_ratio = sprt.AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,aptimevectors,apinfo,idx_sR,amps_SDeVstim,amps_SDoptogenx,fig_dir)
+    iOptogenx, succes_ratio = sprt.AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,aptimevectors,apinfo,idx_sR,amps_SDeVstim,amps_SDoptogenx,pos_VTAeVstim,pos_VTAOptogenx,fig_dir)
 
     # stop timer
     timerstop = time.time()
@@ -236,7 +248,7 @@ def optogeneticStimulation(input, verbose = False):
     # Saving Data
     # ----------------------------------------------------------
     print('Saving Data')
-    inputdata,data = sprt.SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos, iOptogenx, succes_ratio,amps_SDeVstim,amps_SDoptogenx,timerstop-timerstart,seed,results_dir)
+    inputdata,data = sprt.SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos, iOptogenx, succes_ratio,amps_SDeVstim,amps_SDoptogenx,pos_VTAeVstim,pos_VTAOptogenx,timerstop-timerstart,seed,results_dir)
     return inputdata, data
 if __name__ == '__main__':
     import Functions.setup as stp
@@ -256,35 +268,35 @@ if __name__ == '__main__':
     # 3D field
     if fieldtype == '3D':
         data = np.array((xX.ravel(),xY.ravel(),xZ.ravel())).T
-        field = np.hstack((data,1000*myfun(data[:,0],data[:,1],data[:,2],1)[:,None]))
+        field = np.hstack((data/10,1000*myfun(data[:,0],data[:,1],data[:,2],1)[:,None]))
     else :
         idx = int(np.ceil(ny/2)-1)
         xX = xX[:,idx,:]
         xY = xY[:,idx,:]
         xZ= xZ[:,idx,:]
         data = np.array((xX.ravel(),xY.ravel(),xZ.ravel())).T
-        field = np.hstack((data,1000*myfun(data[:,0],data[:,1],data[:,2],1)[:,None]))
+        field = np.hstack((data/10,1000*myfun(data[:,0],data[:,1],data[:,2],1)[:,None]))
         field = field[:,[0,2,3]]
 
 
 
 
 
-    input = stp.simParams({'duration':1500, 'test_flag':True,'save_flag': True, 'plot_flag': False})
+    input = stp.simParams({'duration':200, 'test_flag':True,'save_flag': True, 'plot_flag': False})
 
     input.stimopt.stim_type = ['Optogxstim']
     input.cellsopt.neurontemplate = Cells.NeuronTemplates[0]
-    input.simulationType = ['normal']
+    input.simulationType = ['normal','VTA_Optogenx']
     input.cellsopt.opsin_options.opsinlocations = 'apicalnoTuft'
     input.cellsopt.opsin_options.Gmax_total = None #uS
-    input.cellsopt.opsin_options.distribution = lambda x: 10*(np.exp(-np.linalg.norm(np.array(x)-[0,0,0])/200))
+    input.cellsopt.opsin_options.distribution = lambda x: 1000*(np.exp(-np.linalg.norm(np.array(x)-[0,0,0])/200))
     input.v0 = -70
 
     input.stimopt.Ostimparams.field = eF.prepareDataforInterp(field,'ninterp')
-    input.stimopt.Ostimparams.amp = 542
+    input.stimopt.Ostimparams.amp = 10
     input.stimopt.Ostimparams.delay = 100
     input.stimopt.Ostimparams.pulseType = 'singleSquarePulse'
-    input.stimopt.Ostimparams.dur = 500
+    input.stimopt.Ostimparams.dur = 50
     input.stimopt.Ostimparams.options = {'prf':1/2000,'dc':1/20000, 'phi': np.pi/2, 'xT': [0,0,100]}
 
 
@@ -312,6 +324,14 @@ if __name__ == '__main__':
     input.analysesopt.SDOptogenx.durs = np.append(np.logspace(-3,2,6),500)
     input.analysesopt.SDOptogenx.options['dc_sdc'] = input.analysesopt.SDOptogenx.durs/3500
     input.analysesopt.SDOptogenx.nr_pulseOI = 2
+
+    input.analysesopt.VTAOptogenx.options['simdur']=150
+    input.analysesopt.VTAOptogenx.options['delay']=50
+    input.analysesopt.VTAOptogenx.options['vinit']=-70
+    input.analysesopt.VTAOptogenx.options['n_iters']=7
+    input.analysesopt.VTAOptogenx.options['verbose'] = True
+    input.analysesopt.VTAOptogenx.options['scale_initsearch'] = 1
+    input.analysesopt.VTAOptogenx.searchdir = np.array([1,0,0])
 
     input.analysesopt.succesRatioOptions['window'] = 100
 

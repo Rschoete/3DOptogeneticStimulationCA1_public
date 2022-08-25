@@ -7,7 +7,7 @@ import time
 
 colorkeyval = {'soma':'tab:red', 'axon':'tomato','apical trunk':'tab:blue','apical trunk ext':'royalblue', 'apical tuft': 'tab:green','apical obliques': 'tab:cyan', 'basal dendrites': 'tab:olive', 'unclassified':[0,0,0]}
 
-def AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,aptimevectors,apinfo,idx_sR,amps_SDeVstim,amps_SDoptogenx,fig_dir):
+def AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,aptimevectors,apinfo,idx_sR,amps_SDeVstim,amps_SDoptogenx,pos_VTAeVstim,pos_VTAoptogenx,fig_dir):
 
 
     iOptogenx = None
@@ -130,7 +130,7 @@ def calcSuccesratio(input,t,spikeTimes,ostim_time,ostim_amp,estim_time,estim_amp
 
     return succesRatio
 
-def SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos,iOptogenx, succes_ratio,amps_SDeVstim,amps_SDoptogenx,runtime,seed,results_dir):
+def SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos,iOptogenx, succes_ratio,amps_SDeVstim,amps_SDoptogenx,pos_VTAeVstim,pos_VTAoptogenx,runtime,seed,results_dir):
     test_flag = input.test_flag
     # save input
     inputname = results_dir+'/input.json'
@@ -159,6 +159,7 @@ def SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,
     data['Optogxstim']['iOptogenx'] = iOptogenx
     data['eVstim'] = addESinfo(cell,input.stimopt['Estimparams'])
     data['SDcurve']= {'eVstim': amps_SDeVstim, 'Optogenx': amps_SDoptogenx}
+    data['VTApoints'] = {'eVstim': pos_VTAeVstim, 'Optogenx': pos_VTAoptogenx}
     data['succes_Ratio'] = succes_ratio
     datasize = get_size(data)
     if datasize>input.resultsmemlim:

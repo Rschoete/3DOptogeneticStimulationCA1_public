@@ -12,7 +12,7 @@ class simParams(object):
         self.save_flag = True
         self.autosetPointer = True
 
-        self.simulationType = ['normal'] #'normal', 'SD_Optogenx', 'SD_eVstim'
+        self.simulationType = ['normal'] #'normal', 'SD_Optogenx', 'SD_eVstim', 'VTA_Optogenx'
 
         self.seed = datetime(2021, 12, 1, 13, 0).timestamp()
 
@@ -272,6 +272,15 @@ class analysesOptions(Dict):
         self.SDOptogenx.stimpointer = 'ostim_xtra'
         self.SDOptogenx.nr_pulseOI = 1
         self.SDOptogenx.options = dict(vinit = -65, simdur = 400, dc_sdc=0.5, n_iters = 7) # for scale_initsearch = 10 error is 1/(2**7)
+
+        self.VTAOptogenx = Dict()
+        self.VTAOptogenx.startpos = np.array([np.zeros(5),np.zeros(5),np.arange(0,1,0.2)+0.2]).T
+        self.VTAOptogenx.searchdir = np.array([1,0,0])
+        self.VTAOptogenx.cellrecloc = 'soma[0](0.5)'
+        self.VTAOptogenx.stimtype = 'optogenx'
+        self.VTAOptogenx.stimpointer = 'ostim_xtra'
+        self.VTAOptogenx.nr_pulseOI = 1
+        self.VTAOptogenx.options = dict(vinit = -65, simdur = 400, dc_sdc=0.5, n_iters = 7) # for scale_initsearch = 10 error is 1/(2**7)
 
 
 
