@@ -19,7 +19,7 @@ import Functions.globalFunctions.ExtracellularField as eF
 import Functions.support as sprt
 import Functions.globalFunctions.featExtract as featE
 
-def optogeneticStimulation(input, verbose = False):
+def fieldStimulation(input, verbose = False):
     print("\n\nDate and time =", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
     if not isinstance(input.simulationType,list):
         input.simulationType = [input.simulationType]
@@ -344,7 +344,7 @@ if __name__ == '__main__':
 
     input.analysesopt.succesRatioOptions['window'] = 100
 
-    optogeneticStimulation(input, verbose = True)
+    fieldStimulation(input, verbose = True)
 
     if input.plot_flag:
         plt.show()
