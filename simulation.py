@@ -159,6 +159,14 @@ def optogeneticStimulation(input, verbose = False):
     if any([x in input.simulationType for x in ['VTA_eVstim','VTA_Optogenx']]):
         print('Calculating VTA')
     pos_VTAeVstim = None; pos_VTAOptogenx = None
+    if 'VTA_eVstim' in input.simulationType:
+        print('\t* VTA_eVstim')
+        VTAopt = input.analysesopt.VTAeVstim
+        params = input.stimopt.Estimparams
+        VTAopt.cellrecloc = sprt.convert_strtoseg(cell,VTAopt.cellrecloc)
+        pos_VTAeVstim = featE.VTA_xstim(h,cell,VTAopt.startpos,VTAopt.searchdir,params['field'],params['amp'],params['dur'],VTAopt.cellrecloc,VTAopt.stimtype,stimpointer=VTAopt.stimpointer,nr_pulseOI=VTAopt.nr_pulseOI,estimoptions=params['options'], **VTAopt.options)
+        print(f'\t amp={params["amp"]},dur = {params["dur"]}')
+        print('\t  ',[f"{spos} -> {pos}" if pos is not None else f"{spos} -> None" for spos,pos in zip(VTAopt.startpos,pos_VTAOptogenx)],'\n')
     if 'VTA_Optogenx' in input.simulationType:
         print('\t* VTA_Optogenx')
         VTAopt = input.analysesopt.VTAOptogenx
@@ -239,7 +247,7 @@ def optogeneticStimulation(input, verbose = False):
     # ----------------------------------------------------------
     print('Analyses')
     # Create
-    iOptogenx, succes_ratio = sprt.AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,aptimevectors,apinfo,idx_sR,amps_SDeVstim,amps_SDoptogenx,pos_VTAeVstim,pos_VTAOptogenx,fig_dir)
+    iOptogenx, succes_ratio, VTAOptogenx, VTAeVstim = sprt.AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,aptimevectors,apinfo,idx_sR,amps_SDeVstim,amps_SDoptogenx,pos_VTAeVstim,pos_VTAOptogenx,fig_dir)
 
     # stop timer
     timerstop = time.time()
@@ -248,7 +256,7 @@ def optogeneticStimulation(input, verbose = False):
     # Saving Data
     # ----------------------------------------------------------
     print('Saving Data')
-    inputdata,data = sprt.SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos, iOptogenx, succes_ratio,amps_SDeVstim,amps_SDoptogenx,pos_VTAeVstim,pos_VTAOptogenx,timerstop-timerstart,seed,results_dir)
+    inputdata,data = sprt.SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos, iOptogenx, succes_ratio,amps_SDeVstim,amps_SDoptogenx,VTAeVstim,VTAOptogenx,timerstop-timerstart,seed,results_dir)
     return inputdata, data
 if __name__ == '__main__':
     import Functions.setup as stp
@@ -282,7 +290,7 @@ if __name__ == '__main__':
 
 
 
-    input = stp.simParams({'duration':200, 'test_flag':True,'save_flag': True, 'plot_flag': False})
+    input = stp.simParams({'duration':200, 'test_flag':True,'save_flag': True, 'plot_flag': True})
 
     input.stimopt.stim_type = ['Optogxstim']
     input.cellsopt.neurontemplate = Cells.NeuronTemplates[0]
@@ -328,10 +336,11 @@ if __name__ == '__main__':
     input.analysesopt.VTAOptogenx.options['simdur']=150
     input.analysesopt.VTAOptogenx.options['delay']=50
     input.analysesopt.VTAOptogenx.options['vinit']=-70
-    input.analysesopt.VTAOptogenx.options['n_iters']=7
+    input.analysesopt.VTAOptogenx.options['n_iters']=3
     input.analysesopt.VTAOptogenx.options['verbose'] = True
-    input.analysesopt.VTAOptogenx.options['scale_initsearch'] = 1
+    input.analysesopt.VTAOptogenx.options['scale_initsearch'] = 4
     input.analysesopt.VTAOptogenx.searchdir = np.array([1,0,0])
+    input.analysesopt.VTAOptogenx.startpos = np.array([np.zeros(5)+24,np.zeros(5),np.arange(0,50,10)+10]).T
 
     input.analysesopt.succesRatioOptions['window'] = 100
 

@@ -273,6 +273,16 @@ class analysesOptions(Dict):
         self.SDOptogenx.nr_pulseOI = 1
         self.SDOptogenx.options = dict(vinit = -65, simdur = 400, dc_sdc=0.5, n_iters = 7) # for scale_initsearch = 10 error is 1/(2**7)
 
+        self.save_VTAplot = True
+        self.VTAeVstim = Dict()
+        self.VTAeVstim.startpos = np.array([np.zeros(5),np.zeros(5),np.arange(0,1,0.2)+0.2]).T
+        self.VTAeVstim.searchdir = np.array([1,0,0])
+        self.VTAeVstim.cellrecloc = 'soma[0](0.5)'
+        self.VTAeVstim.stimtype = 'cathodic'
+        self.VTAeVstim.stimpointer = 'estim_xtra'
+        self.VTAeVstim.nr_pulseOI = 1
+        self.VTAeVstim.options = dict(vinit = -65, simdur = 400, dc_sdc=0.5, n_iters = 7) # for scale_initsearch = 10 error is 1/(2**7)
+
         self.VTAOptogenx = Dict()
         self.VTAOptogenx.startpos = np.array([np.zeros(5),np.zeros(5),np.arange(0,1,0.2)+0.2]).T
         self.VTAOptogenx.searchdir = np.array([1,0,0])

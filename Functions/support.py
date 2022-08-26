@@ -1,4 +1,5 @@
 from .globalFunctions.utils import MyEncoder, applysigniftoall, get_size
+from .globalFunctions.ExtracellularField import _singleSlicePlot
 import Functions.globalFunctions.morphology_v2 as mphv2
 import matplotlib.pyplot as plt
 import json
@@ -10,7 +11,7 @@ colorkeyval = {'soma':'tab:red', 'axon':'tomato','apical trunk':'tab:blue','apic
 def AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,aptimevectors,apinfo,idx_sR,amps_SDeVstim,amps_SDoptogenx,pos_VTAeVstim,pos_VTAoptogenx,fig_dir):
 
 
-    iOptogenx = None
+    iOptogenx = None; VTAOptogenx = None; VTAeVstim = None
 
     # create colored section plot
     aopt = input.analysesopt
@@ -66,10 +67,17 @@ def AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,
         SDcopt = input.analysesopt.SDOptogenx
         SDcurveplot(SDcopt,amps_SDoptogenx,'Light Intensity stim amp [W/m2]','optogenx',input.save_flag and aopt.save_SDplot, figdir = fig_dir)
 
+    if pos_VTAeVstim is not None:
+        VTAopt = input.analysesopt.VTAeVstim
+        VTAeVstim = VTAplot(VTAopt,pos_VTAeVstim,input.stimopt.Estimparams,'eVstim',input.save_flag and aopt.save_VTAplot, figdir = fig_dir)
+    if pos_VTAoptogenx is not None:
+        VTAopt = input.analysesopt.VTAOptogenx
+        VTAOptogenx = VTAplot(VTAopt,pos_VTAoptogenx,input.stimopt.Ostimparams,'optogenx',input.save_flag and aopt.save_VTAplot, figdir = fig_dir)
+
     if input.plot_flag:
         plt.show(block=False)
 
-    return iOptogenx, succes_ratio
+    return iOptogenx, succes_ratio, VTAOptogenx, VTAeVstim
 
 def calciOptogenx(input,t,traces):
     iOptogenx = None
@@ -447,6 +455,48 @@ def SDcurveplot(SDcopt,amps,ylabel,savename,save_flag, figdir,extension='png'):
         if save_flag:
             savename = f"{figdir}/SDplot_{savename}.{extension}"
             fig.savefig(savename)
+
+def VTAplot(VTAopt,positions,stimparams,savename,save_flag,figdir,extension='png'):
+    # assumes axial symmetry
+    pos = [x for x in positions if x is not None]
+    if len(pos)==0:
+        return None
+    pos = np.array(pos)
+    pos0 = np.array(VTAopt.startpos)
+    rpos = np.array([np.linalg.norm(pos[:,0:1],axis=1),pos[:,-1]]).T
+    r0pos = np.array([np.linalg.norm(pos0[:,0:1],axis=1),pos0[:,-1]]).T
+
+    fig = plt.figure()
+    ax = plt.subplot(111)
+
+    field = stimparams.field
+    if len(stimparams.field)==3:
+        if stimparams.structured:
+            ax.pcolormesh(field[0],field[1],np.log10(field[2]).T,shading='auto')
+        else:
+            raise NotImplementedError
+    else:
+        if stimparams.structured:
+            ax.pcolormesh(field[0],field[2],np.log10(np.squeeze(field[3][:,field[1]==0,:])).T,shading='auto')
+        else:
+            raise NotImplementedError
+
+
+    for r0,r in zip(r0pos,rpos):
+        ax.plot([r0[0],r[0]],[r0[-1],r[-1]],'X')
+    ax.plot(rpos[:,0],rpos[:,1],'r')
+    ax.set_ylabel('axial [mm]')
+    ax.set_xlabel('radial [mm]')
+    ymaxlim = 1.1*max(max(r0pos[:,1]),max(rpos[:,1]))
+    xmaxlim = 1.1*max(max(r0pos[:,0]),max(rpos[:,0]))
+    ax.set_ylim(max(ax.get_ylim()[0],-ymaxlim),ymaxlim)
+    ax.set_xlim(max(ax.get_xlim()[0],-xmaxlim),xmaxlim)
+    ax.invert_yaxis()
+    if save_flag:
+        savename = f"{figdir}/VTAplot_{savename}.{extension}"
+        fig.savefig(savename)
+    from scipy import integrate
+    return {'VTA':integrate.simps(np.pi*rpos[:,0]**2,rpos[:,1]),'pos':positions}
 
 def convert_strtoseclist(cell,location):
     if location.lower()=='soma':
