@@ -20,7 +20,7 @@ class simParams(object):
         self.samplingFrequency = 10000 #Hz
         self.dt = 0.025
         self.dt_adapttopd = True
-        self.celsius = None # if none then use cell.celsius 
+        self.celsius = None # if none then use cell.celsius
         self.defaultThreshold = -10
         self.v0 = -65
 
@@ -235,14 +235,14 @@ class analysesOptions(Dict):
 
         self.recordTotalOptogeneticCurrent = True
         self.recordSuccesRatio = True
-        self.succesRatioOptions = {'type':['eVstim','Optogenx'], 'window':[10], 'succesRatio_seg': 'soma[0](0.5)'}
+        self.succesRatioOptions = Dict({'type':['eVstim','Optogenx'], 'window':[10], 'succesRatio_seg': 'soma[0](0.5)'})
 
         self.shapeplots = [dict(cvals_type='os',colorscale='log10'),dict(cvals_type='gchr2bar_chr2h134r')]
         self.shapeplot_axsettings = {}
         self.save_shapeplots = True
         self.shapeplots_extension = '.png'
 
-        self.recordTraces = {'v':dict(sec='all', loc = 0.5, var='v'),'ichr2':dict(sec='all', loc=0.5, var = 'i', mech='chr2h134r')}
+        self.recordTraces = Dict({'v':dict(sec='all', loc = 0.5, var='v'),'ichr2':dict(sec='all', loc=0.5, var = 'i', mech='chr2h134r')})
         self.tracesplot_axsettings = {}
         self.save_traces = True
         self.traces_extension = '.png'
@@ -336,7 +336,7 @@ def replaceNeuronSectionsandFunTostr(obj):
 
 def recursiveDictUpdate(obj,value,checkhasattr_flag=True):
     for k,v in value.items():
-        if isinstance(v,(dict,Dict)) and (not k in []): # add in brackets parameter names that do not need to be checked typically dict with variable keys if dict with dict here else add on next line
+        if isinstance(v,(dict,Dict)) and (not k in ['options']): # add in brackets parameter names that do not need to be checked typically dict with variable keys if dict with dict here else add on next line
             if k in []:
                 recursiveDictUpdate(getattr(obj,k),Dict(v),checkhasattr_flag=False)
             else:
@@ -344,6 +344,9 @@ def recursiveDictUpdate(obj,value,checkhasattr_flag=True):
         else:
             if v == 'removedToReduceMemory':
                 v = None
+            #elif isinstance(v,str) and any([x in v for x in ['= lambda','=lambda']]):
+                #convert str(functions) back to functions/callables
+            #    v = eval(v.split('=')[-1])
             if checkhasattr_flag:
                 if hasattr(obj,k):
                     setattr(obj,k,v)

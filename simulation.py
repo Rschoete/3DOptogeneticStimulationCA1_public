@@ -290,11 +290,11 @@ if __name__ == '__main__':
 
 
 
-    input = stp.simParams({'duration':200, 'test_flag':True,'save_flag': True, 'plot_flag': True})
+    input = stp.simParams({'duration':200, 'test_flag':True,'save_flag': True, 'plot_flag': False})
 
-    input.stimopt.stim_type = ['Optogxstim']
+    input.stimopt.stim_type = ['Optogxstim','eVstim']
     input.cellsopt.neurontemplate = Cells.NeuronTemplates[0]
-    input.simulationType = ['normal','VTA_Optogenx']
+    input.simulationType = ['normal','SD_eVstim','SD_Optogenx','VTA_Optogenx']
     input.cellsopt.opsin_options.opsinlocations = 'apicalnoTuft'
     input.cellsopt.opsin_options.Gmax_total = None #uS
     input.cellsopt.opsin_options.distribution = lambda x: 1000*(np.exp(-np.linalg.norm(np.array(x)-[0,0,0])/200))
@@ -303,13 +303,13 @@ if __name__ == '__main__':
     input.stimopt.Ostimparams.field = eF.prepareDataforInterp(field,'ninterp')
     input.stimopt.Ostimparams.amp = 10
     input.stimopt.Ostimparams.delay = 100
-    input.stimopt.Ostimparams.pulseType = 'singleSquarePulse'
+    input.stimopt.Ostimparams.pulseType = 'pulseTrain'
     input.stimopt.Ostimparams.dur = 50
     input.stimopt.Ostimparams.options = {'prf':1/2000,'dc':1/20000, 'phi': np.pi/2, 'xT': [0,0,100]}
 
 
     input.stimopt.Estimparams.filepath = 'Inputs\ExtracellularPotentials\Reference - recessed\PotentialDistr-600um-20umMESH_structured.txt'#'Inputs\ExtracellularPotentials\Reference - recessed\PotentialDistr-600um-20umMESH_refined_masked_structured.txt'
-    input.stimopt.Estimparams.delay = 100
+    input.stimopt.Estimparams.delay = input.duration+50
     input.stimopt.Estimparams.dur = 10
     input.stimopt.Estimparams.options['phi'] = np.pi/2
     input.stimopt.Estimparams.options['xT'] = [0,0,250]
@@ -320,17 +320,17 @@ if __name__ == '__main__':
     input.analysesopt.SDeVstim.options['simdur']=200
     input.analysesopt.SDeVstim.options['delay']=100
     input.analysesopt.SDeVstim.options['vinit']=-70
-    input.analysesopt.SDeVstim.options['n_iters']=1
+    input.analysesopt.SDeVstim.options['n_iters']=2
     input.analysesopt.SDeVstim.durs = np.array([1e0,2e0])
 
-    input.analysesopt.SDOptogenx.options['simdur']=1000
+    input.analysesopt.SDOptogenx.options['simdur']=200
     input.analysesopt.SDOptogenx.options['delay']=100
     input.analysesopt.SDOptogenx.options['vinit']=-70
-    input.analysesopt.SDOptogenx.options['n_iters']=7
+    input.analysesopt.SDOptogenx.options['n_iters']=2
     input.analysesopt.SDOptogenx.options['verbose'] = True
     input.analysesopt.SDOptogenx.startamp = 1000
-    input.analysesopt.SDOptogenx.durs = np.append(np.logspace(-3,2,6),500)
-    input.analysesopt.SDOptogenx.options['dc_sdc'] = input.analysesopt.SDOptogenx.durs/3500
+    input.analysesopt.SDOptogenx.durs = np.logspace(-2,1,2)
+    input.analysesopt.SDOptogenx.options['dc_sdc'] = input.analysesopt.SDOptogenx.durs/10
     input.analysesopt.SDOptogenx.nr_pulseOI = 2
 
     input.analysesopt.VTAOptogenx.options['simdur']=150

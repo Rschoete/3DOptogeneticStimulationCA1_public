@@ -60,19 +60,31 @@ def AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,
     # SDcurve plots
     if amps_SDeVstim is not None:
         SDcopt = input.analysesopt.SDeVstim
-        SDcurveplot(SDcopt,amps_SDeVstim,'V_e stim amp [V]','eVstim',input.save_flag and aopt.save_SDplot, figdir = fig_dir)
+        try:
+            SDcurveplot(SDcopt,amps_SDeVstim,'V_e stim amp [V]','eVstim',input.save_flag and aopt.save_SDplot, figdir = fig_dir)
+        except Exception as E:
+            print(E)
 
 
     if amps_SDoptogenx is not None:
         SDcopt = input.analysesopt.SDOptogenx
-        SDcurveplot(SDcopt,amps_SDoptogenx,'Light Intensity stim amp [W/m2]','optogenx',input.save_flag and aopt.save_SDplot, figdir = fig_dir)
+        try:
+            SDcurveplot(SDcopt,amps_SDoptogenx,'Light Intensity stim amp [W/m2]','optogenx',input.save_flag and aopt.save_SDplot, figdir = fig_dir)
+        except Exception as E:
+            print(E)
 
     if pos_VTAeVstim is not None:
         VTAopt = input.analysesopt.VTAeVstim
-        VTAeVstim = VTAplot(VTAopt,pos_VTAeVstim,input.stimopt.Estimparams,'eVstim',input.save_flag and aopt.save_VTAplot, figdir = fig_dir)
+        try:
+            VTAeVstim = VTAplot(VTAopt,pos_VTAeVstim,input.stimopt.Estimparams,'eVstim',input.save_flag and aopt.save_VTAplot, figdir = fig_dir)
+        except Exception as E:
+            print(E)
     if pos_VTAoptogenx is not None:
         VTAopt = input.analysesopt.VTAOptogenx
-        VTAOptogenx = VTAplot(VTAopt,pos_VTAoptogenx,input.stimopt.Ostimparams,'optogenx',input.save_flag and aopt.save_VTAplot, figdir = fig_dir)
+        try:
+            VTAOptogenx = VTAplot(VTAopt,pos_VTAoptogenx,input.stimopt.Ostimparams,'optogenx',input.save_flag and aopt.save_VTAplot, figdir = fig_dir)
+        except Exception as E:
+            print(E)
 
     if input.plot_flag:
         plt.show(block=False)

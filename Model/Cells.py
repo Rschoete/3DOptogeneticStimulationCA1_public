@@ -266,6 +266,9 @@ class NeuronTemplate:
         # alse source_hdistance needs to be provided. i.e., a cell segment
         values = []
         seglist = []
+        if isinstance(distribution,str) and any([x in distribution for x in ['= lambda','=lambda']]):
+            #convert str(functions) back to functions/callables
+            distribution = eval(distribution.split('=')[-1])
         if seclist=='all':
             seclist = self.allsec
         if method.lower()=='3d':
