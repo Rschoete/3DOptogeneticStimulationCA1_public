@@ -145,7 +145,7 @@ def fieldStimulation(input, verbose = False):
         SDcopt = input.analysesopt.SDeVstim
         params = input.stimopt.Estimparams
         SDcopt.cellrecloc = sprt.convert_strtoseg(cell,SDcopt.cellrecloc)
-        amps_SDeVstim = featE.SD_curve_xstim(h,cell,SDcopt.durs,params['field'],SDcopt.startamp,SDcopt.cellrecloc,SDcopt.stimtype,stimpointer=SDcopt.stimpointer,nr_pulseOI=SDcopt.nr_pulseOI,estimoptions=params['options'], **SDcopt.options)
+        amps_SDeVstim = featE.SD_curve_xstim(h,cell,SDcopt.durs,params['field'],SDcopt.startamp,SDcopt.cellrecloc,SDcopt.stimtype,stimpointer=SDcopt.stimpointer,nr_pulseOI=SDcopt.nr_pulseOI,estimoptions=params['options'].copy(), **SDcopt.options)
         print('\t  ',[f"{dur:0.2e} -> {amp:0.2e}" if amp is not None else f"{dur:0.2e} -> None" for dur,amp in zip(SDcopt.durs,amps_SDeVstim)],'\n')
 
     if  'SD_Optogenx' in input.simulationType:
@@ -153,7 +153,7 @@ def fieldStimulation(input, verbose = False):
         SDcopt = input.analysesopt.SDOptogenx
         params = input.stimopt.Ostimparams
         SDcopt.cellrecloc = sprt.convert_strtoseg(cell,SDcopt.cellrecloc)
-        amps_SDoptogenx = featE.SD_curve_xstim(h,cell,SDcopt.durs,params['field'],SDcopt.startamp,SDcopt.cellrecloc,SDcopt.stimtype,stimpointer=SDcopt.stimpointer,nr_pulseOI=SDcopt.nr_pulseOI,estimoptions=params['options'], **SDcopt.options)
+        amps_SDoptogenx = featE.SD_curve_xstim(h,cell,SDcopt.durs,params['field'],SDcopt.startamp,SDcopt.cellrecloc,SDcopt.stimtype,stimpointer=SDcopt.stimpointer,nr_pulseOI=SDcopt.nr_pulseOI,estimoptions=params['options'].copy(), **SDcopt.options)
         print('\t  ',[f"{dur:0.2e} -> {amp:0.2e}" if amp is not None else f"{dur:0.2e} -> None" for dur,amp in zip(SDcopt.durs,amps_SDoptogenx)],'\n')
 
     if any([x in input.simulationType for x in ['VTA_eVstim','VTA_Optogenx']]):
@@ -164,7 +164,7 @@ def fieldStimulation(input, verbose = False):
         VTAopt = input.analysesopt.VTAeVstim
         params = input.stimopt.Estimparams
         VTAopt.cellrecloc = sprt.convert_strtoseg(cell,VTAopt.cellrecloc)
-        pos_VTAeVstim = featE.VTA_xstim(h,cell,VTAopt.startpos,VTAopt.searchdir,params['field'],params['amp'],params['dur'],VTAopt.cellrecloc,VTAopt.stimtype,stimpointer=VTAopt.stimpointer,nr_pulseOI=VTAopt.nr_pulseOI,estimoptions=params['options'], **VTAopt.options)
+        pos_VTAeVstim = featE.VTA_xstim(h,cell,VTAopt.startpos,VTAopt.searchdir,params['field'],params['amp'],params['dur'],VTAopt.cellrecloc,VTAopt.stimtype,stimpointer=VTAopt.stimpointer,nr_pulseOI=VTAopt.nr_pulseOI,estimoptions=params['options'].copy(), **VTAopt.options)
         print(f'\t amp={params["amp"]},dur = {params["dur"]}')
         print('\t  ',[f"{spos} -> {pos}" if pos is not None else f"{spos} -> None" for spos,pos in zip(VTAopt.startpos,pos_VTAOptogenx)],'\n')
     if 'VTA_Optogenx' in input.simulationType:
@@ -172,7 +172,7 @@ def fieldStimulation(input, verbose = False):
         VTAopt = input.analysesopt.VTAOptogenx
         params = input.stimopt.Ostimparams
         VTAopt.cellrecloc = sprt.convert_strtoseg(cell,VTAopt.cellrecloc)
-        pos_VTAOptogenx = featE.VTA_xstim(h,cell,VTAopt.startpos,VTAopt.searchdir,params['field'],params['amp'],params['dur'],VTAopt.cellrecloc,VTAopt.stimtype,stimpointer=VTAopt.stimpointer,nr_pulseOI=VTAopt.nr_pulseOI,estimoptions=params['options'], **VTAopt.options)
+        pos_VTAOptogenx = featE.VTA_xstim(h,cell,VTAopt.startpos,VTAopt.searchdir,params['field'],params['amp'],params['dur'],VTAopt.cellrecloc,VTAopt.stimtype,stimpointer=VTAopt.stimpointer,nr_pulseOI=VTAopt.nr_pulseOI,estimoptions=params['options'].copy(), **VTAopt.options)
         print(f'\t amp={params["amp"]},dur = {params["dur"]}')
         print('\t  ',[f"{spos} -> {pos}" if pos is not None else f"{spos} -> None" for spos,pos in zip(VTAopt.startpos,pos_VTAOptogenx)],'\n')
 
@@ -340,7 +340,7 @@ if __name__ == '__main__':
     input.analysesopt.VTAOptogenx.options['verbose'] = True
     input.analysesopt.VTAOptogenx.options['scale_initsearch'] = 4
     input.analysesopt.VTAOptogenx.searchdir = np.array([1,0,0])
-    input.analysesopt.VTAOptogenx.startpos = np.array([np.zeros(5)+24,np.zeros(5),np.arange(0,50,10)+10]).T
+    input.analysesopt.VTAOptogenx.startpos = np.array([np.zeros(5)+24,np.zeros(5),[1,5,10,20,30]]).T
 
     input.analysesopt.succesRatioOptions['window'] = 100
 
