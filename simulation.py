@@ -258,6 +258,17 @@ def fieldStimulation(input, verbose = False):
     print('Saving Data')
     inputdata,data = sprt.SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos, iOptogenx, succes_ratio,amps_SDeVstim,amps_SDoptogenx,VTAeVstim,VTAOptogenx,timerstop-timerstart,seed,results_dir)
     return inputdata, data
+
+def gridFieldStimulation(input,xposs=list(np.arange(0,2000,200)),yposs=[0],zposs=list(np.arange(0,5000,500)),rots=list(2/12*np.pi*np.arange(4))):
+    for rot in rots:
+        for xpos in xposs:
+            for ypos in yposs:
+                for zpos in zposs:
+                    input.cellsopt.init_options.theta = rot
+                    input.stimopt.Ostimparams.options['xT'] = [float(xpos),float(ypos),float(zpos)]
+                    fieldStimulation(input)
+
+
 if __name__ == '__main__':
     import Functions.setup as stp
     import matplotlib.pyplot as plt

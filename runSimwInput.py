@@ -24,4 +24,4 @@ if __name__ == '__main__':
         myinput = json.load(f)
     print(myinput)
     data = stp.simParams(myinput)
-    fieldStimulation(data)
+    gridFieldStimulation(data)
