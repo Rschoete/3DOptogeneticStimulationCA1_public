@@ -6,7 +6,10 @@ if __name__ == '__main__':
     from simulation import *
     import Functions.setup as stp
 
-    filepath= sys.argv[1]
+    try:
+        filepath= sys.argv[1]
+    except:
+        filepath = 'test'
     print(filepath)
     if not filepath.endswith('.json'):
         filepath = filepath+'.json'

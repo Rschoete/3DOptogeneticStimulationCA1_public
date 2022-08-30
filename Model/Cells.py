@@ -48,7 +48,7 @@ class NeuronTemplate:
     * movesomatoorigin = True: flag that is used in all child classes
     * **kwargs not used: add so no error when transfering kwargs from child classes
     '''
-    def __init__ (self,templatepath, templatename, replace_axon = True, morphologylocation = './Model/morphologies',ID=0,ty=0,col=0, phi = 0, theta = 0, movesomatoorigin = True,**kwargs):
+    def __init__ (self,templatepath, templatename, replace_axon = True, morphologylocation = './Model/morphologies',ID=0,ty=0,col=0, phi = 0, theta = 0, psi=0, movesomatoorigin = True,**kwargs):
         self.templatepath = templatepath
         self.templatename = templatename
         self.morphologylocation = morphologylocation
@@ -59,6 +59,7 @@ class NeuronTemplate:
         self.col=col
         self.phi = phi
         self.theta = theta
+        self.psi = psi
         self.movesomatoorigin = movesomatoorigin
 
     def load_template(self):
@@ -88,18 +89,19 @@ class NeuronTemplate:
                 xyz = xyz+rt
                 h.pt3dchange(i, xyz[0], xyz[1], xyz[2], section.diam3d(i), sec=section)
 
-    def rotate_Cell(self,phi=0,theta=0,init_rotation=False):
+    def rotate_Cell(self,phi=0,theta=0,psi=0,init_rotation=False):
         # rotate cell only two degrees of freedom Rz(phi)*Ry(theta)*r
         # init_rotation -> use internal phi and theta (self.phi, self theta)
         # phi and theta are zero by default
         if init_rotation:
             phi = self.phi
             theta = self.theta
+            psi = self.psi
         if phi!=0 or theta!=0:
             for section in self.allsec:
                 for i in range(section.n3d()):
                     xyz = np.array([section.x3d(i),section.y3d(i),section.z3d(i)])
-                    xyz = np.dot(np.dot(_Rz(phi),_Ry(theta)),xyz[:,None])
+                    xyz = np.dot(np.dot(_Rz(phi),np.dot(_Ry(theta),_Rx(psi))),xyz[:,None])
                     h.pt3dchange(i, xyz[0][0], xyz[1][0], xyz[2][0], section.diam3d(i), sec=section)
 
     def insertExtracellular(self, seclist='all', set_pointer_xtra=True):

@@ -90,7 +90,7 @@ def fieldStimulation(input, verbose = False):
     # Rotate cell
     ctopt = input.cellsopt.cellTrans_options
     if ctopt.rotate_flag:
-        cell.rotate_Cell(ctopt.phi,ctopt.theta)
+        cell.rotate_Cell(ctopt.phi,ctopt.theta,ctopt.psi)
     # Translate cell
     if ctopt.move_flag:
         cell.move_Cell(ctopt.rt)

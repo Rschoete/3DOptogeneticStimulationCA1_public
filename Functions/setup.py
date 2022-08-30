@@ -80,10 +80,11 @@ class cellsOptions(Dict):
         self.init_options.replace_axon = True
         self.init_options.morphologylocation ='./Model/morphologies'
         self.init_options.ID=0
-        self.init_optionsty=0
+        self.init_options.ty=0
         self.init_options.col=0
         self.init_options.phi = 0
         self.init_options.theta = 0
+        self.init_options.psi = 0
         self.init_options.movesomatoorigin = True
 
         # cell transformation options
@@ -94,6 +95,7 @@ class cellsOptions(Dict):
         self.cellTrans_options.rotate_flag = False
         self.cellTrans_options.phi = 0
         self.cellTrans_options.theta = 0
+        self.cellTrans_options.psi = 0
 
         # opsin options
         self.opsin_options = Dict()

@@ -47,20 +47,21 @@ if __name__ == '__main__':
 
     input = stp.simParams({'duration':200, 'test_flag':True,'save_flag': True, 'plot_flag': False})
 
-    input.stimopt.stim_type = ['Optogxstim','eVstim']
+    input.stimopt.stim_type = ['Optogxstim']
     input.cellsopt.neurontemplate = Cells.NeuronTemplates[0]
-    input.simulationType = ['normal','SD_eVstim','SD_Optogenx','VTA_Optogenx']
-    input.cellsopt.opsin_options.opsinlocations = 'apicalnoTuft'
+    input.simulationType = ['normal']
+    input.cellsopt.opsin_options.opsinlocations = 'allsec'
     input.cellsopt.opsin_options.Gmax_total = None #uS
     input.cellsopt.opsin_options.distribution = lambda x: 1000*(np.exp(-np.linalg.norm(np.array(x)-[0,0,0])/200))
     input.v0 = -70
 
-    input.stimopt.Ostimparams.field = eF.prepareDataforInterp(field,'ninterp')
-    input.stimopt.Ostimparams.amp = 10
+    #input.stimopt.Ostimparams.field = eF.prepareDataforInterp(field,'ninterp')
+    input.stimopt.Ostimparams.filepath = 'Inputs/LightIntensityProfile/Ugent470nIrr_np1e7_res5emin3_gf1_cyl.txt'
+    input.stimopt.Ostimparams.amp = 10000
     input.stimopt.Ostimparams.delay = 100
-    input.stimopt.Ostimparams.pulseType = 'pulseTrain'
+    input.stimopt.Ostimparams.pulseType = 'singleSquarePulse'
     input.stimopt.Ostimparams.dur = 50
-    input.stimopt.Ostimparams.options = {'prf':1/2000,'dc':1/20000, 'phi': np.pi/2, 'xT': [0,0,100]}
+    input.stimopt.Ostimparams.options = {'prf':1/2000,'dc':1/20000, 'psi': np.pi/2, 'xT': [0,0,100]}
 
 
     input.stimopt.Estimparams.filepath = 'Inputs\ExtracellularPotentials\Reference - recessed\PotentialDistr-600um-20umMESH_structured.txt'#'Inputs\ExtracellularPotentials\Reference - recessed\PotentialDistr-600um-20umMESH_refined_masked_structured.txt'
@@ -91,11 +92,11 @@ if __name__ == '__main__':
     input.analysesopt.VTAOptogenx.options['simdur']=150
     input.analysesopt.VTAOptogenx.options['delay']=50
     input.analysesopt.VTAOptogenx.options['vinit']=-70
-    input.analysesopt.VTAOptogenx.options['n_iters']=3
+    input.analysesopt.VTAOptogenx.options['n_iters']=1
     input.analysesopt.VTAOptogenx.options['verbose'] = True
-    input.analysesopt.VTAOptogenx.options['scale_initsearch'] = 4
+    input.analysesopt.VTAOptogenx.options['scale_initsearch'] = 1000
     input.analysesopt.VTAOptogenx.searchdir = np.array([1,0,0])
-    input.analysesopt.VTAOptogenx.startpos = np.array([np.zeros(5)+24,np.zeros(5),np.arange(0,50,10)+10]).T
+    input.analysesopt.VTAOptogenx.startpos = np.array([np.zeros(5)+1,np.zeros(5),np.arange(1,6,1)*1000]).T
 
     input.analysesopt.succesRatioOptions['window'] = 100
     
