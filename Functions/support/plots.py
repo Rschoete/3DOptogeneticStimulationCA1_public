@@ -21,7 +21,7 @@ def shapePlot(h,cell,shapeplotsinfo, axsettings,save_flag, figdir = '.', extensi
             ax.set_xlabel('x')
             ax.set_ylabel('y')
             ax.set_zlabel('z')
-            ax.view_init(elev=axsetting.get('elev',90), azim=axsetting.get('azim',-90))
+            ax.view_init(elev=axsetting.get('elev',0), azim=axsetting.get('azim',0))
             ax.set_title(f"{cell.templatename} / {cell.morphology} / {cell.celltype}")
             if save_flag:
                 savename = f"{figdir}/shapeplot_{pi['cvals_type']}.{extension}"

@@ -19,7 +19,7 @@ import Functions.globalFunctions.ExtracellularField as eF
 import Functions.support as sprt
 import Functions.globalFunctions.featExtract as featE
 
-def fieldStimulation(input, verbose = False):
+def fieldStimulation(input, cell = None, verbose = False):
     print("\n\nDate and time =", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
     if not isinstance(input.simulationType,list):
         input.simulationType = [input.simulationType]
@@ -42,10 +42,16 @@ def fieldStimulation(input, verbose = False):
     # ----------------------------------------------------------
     print('\nCell setup')
     ##Load cell
-    if input.cellsopt.neurontemplate in Cells.NeuronTemplates:
+    if input.cellsopt.neurontemplate in Cells.NeuronTemplates and cell is None:
         print(f'Loading cell: {input.cellsopt.neurontemplate}')
         cell = getattr(Cells,input.cellsopt.neurontemplate)(**input.cellsopt.init_options)
         print(f'\t* celltype: {cell.celltype}\n\t* morphology: {cell.morphology}')
+    elif cell is not None:
+        cell.rotate_Cell(inverse=True,init_rotation=True,allign_axis=False)
+        for key in ['movesomatoorigin','ID','ty','col','phi','theta','psi']:
+            setattr(cell,key,input.cellsopt.init_options[key])
+        cell.moveSomaToOrigin()
+        cell.rotate_Cell(init_rotation=True,allign_axis=False)
     else:
         raise ValueError(f"input.neuronInput = {input.cellsopt.neurontemplate} is invalid. Possible templates are  {Cells.NeuronTemplates}")
 
@@ -257,16 +263,26 @@ def fieldStimulation(input, verbose = False):
     # ----------------------------------------------------------
     print('Saving Data')
     inputdata,data = sprt.SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos, iOptogenx, succes_ratio,amps_SDeVstim,amps_SDoptogenx,VTAeVstim,VTAOptogenx,timerstop-timerstart,seed,results_dir)
-    return inputdata, data
+    return inputdata, data, cell
 
 def gridFieldStimulation(input,xposs=list(np.arange(0,2000,200)),yposs=[0],zposs=list(np.arange(0,5000,500)),rots=list(2/12*np.pi*np.arange(4))):
+    import Functions.setup as stp
+    xposs = list(np.arange(0,2000,2000));yposs=[0];zposs=list(np.arange(0,5000,2500))
+    cell = None
     for rot in rots:
         for xpos in xposs:
             for ypos in yposs:
                 for zpos in zposs:
-                    input.cellsopt.init_options.theta = rot
-                    input.stimopt.Ostimparams.options['xT'] = [float(xpos),float(ypos),float(zpos)]
-                    fieldStimulation(input)
+                    myinput = stp.simParams(input)
+                    myinput.simulationType = ['normal']
+                    myinput.duration = 120
+                    myinput.subfolderSuffix = myinput.subfolderSuffix+'/'
+                    myinput.cellsopt.init_options.theta = -np.pi/2
+                    myinput.cellsopt.init_options.psi = rot
+                    myinput.stimopt.Ostimparams.options['xT'] = [float(xpos),float(ypos),float(zpos)]
+                    #myinput.plot_flag = True
+                    myinput.stimopt.Ostimparams.options['psi'] = 0
+                    _,_,cell= fieldStimulation(myinput,cell=cell)
 
 
 if __name__ == '__main__':

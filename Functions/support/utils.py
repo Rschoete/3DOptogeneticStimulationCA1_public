@@ -27,7 +27,7 @@ def convert_strtoseclist(cell,location):
             location = getattr(cell,location)
         except:
             raise ValueError(location)
-    return location
+    return list(location)
 
 def convert_strtoseg(cell,mystr):
     str_split = mystr.split('(',1)

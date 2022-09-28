@@ -23,5 +23,5 @@ if __name__ == '__main__':
     with open(filepath) as f:
         myinput = json.load(f)
     print(myinput)
-    data = stp.simParams(myinput)
-    gridFieldStimulation(data)
+    #data = stp.simParams(myinput)
+    gridFieldStimulation(myinput)
