@@ -89,19 +89,65 @@ class NeuronTemplate:
                 xyz = xyz+rt
                 h.pt3dchange(i, xyz[0], xyz[1], xyz[2], section.diam3d(i), sec=section)
 
-    def rotate_Cell(self,phi=0,theta=0,psi=0,init_rotation=False):
-        # rotate cell only two degrees of freedom Rz(phi)*Ry(theta)*r
-        # init_rotation -> use internal phi and theta (self.phi, self theta)
-        # phi and theta are zero by default
+    def allign_cell_toaxis(self,axis = 'x'):
+        '''
+        Allign cell to axis = x,y or z
+        For generallity -> extract principal component of a cell. For pyramidal cell this is probably the axo-somato-dendritic-axis.
+        Allign this axis with the chosen euler axis.
+        '''
+        # determine principal component axis assuming this is the axo-somato-dendritic axis
+        secpos = self.gather_secpos()
+        #secpos = secpos-secpos.mean()
+        cov_mat = secpos.cov()
+        eig_values, eig_vectors = np.linalg.eig(cov_mat)
+        e_indices = np.argmax(eig_values)
+        # principal component axis: p1
+        p1 = eig_vectors[:,e_indices]
+        # spherical angles
+        phi = np.arctan2(p1[1],p1[0])
+        try:
+            na = self.apic[-1].n3d()-1
+            xyz = np.array([self.apic[-1].x3d(na),self.apic[-1].y3d(na),self.apic[-1].z3d(na)])
+            angle = np.arccos(np.dot(xyz/np.linalg.norm(xyz),p1))
+            phi = phi+np.pi if angle>np.pi/2 else phi
+        except:
+            phi = phi+np.pi if phi<0 else phi #most of time morphology files are built with apical dendrites to the positive y-direction. correct if p1 is in negative y direction
+        theta = np.arccos(p1[2])
+        # Rotate to axis
+        self.rotate_Cell(phi=phi,theta=np.pi/2-theta,psi=0,inverse=True)
+
+        if axis=='y':
+            self.rotate_Cell(phi=np.pi/2,theta=0,psi=0)
+        elif axis == 'z':
+            self.rotate_Cell(phi=0,theta=-np.pi/2,psi=0)
+        elif axis != 'x':
+            raise ValueError('wrong axis value given. Should be x,y or z')
+
+
+    def rotate_Cell(self,phi=0,theta=0,psi=0,inverse = False, init_rotation=False, allign_axis = True):
+        '''
+        rotate cell Tait-Bryan angles Rz(phi)*Ry(theta)*Rx(psi)*r
+        phi = yawn, theta=pitch, psi = roll
+        init_rotation -> use internal phi and theta (self.phi, self theta, self.psi)
+        allign_axis -> first allign principal (component) axis (often axo-somato-dendritic) to x-axis -> phi and theta will be spherical coordinates of the axis
+        inverse: -> do inverse rotation R = R.T
+        phi, theta and psi are zero by default
+        '''
         if init_rotation:
             phi = self.phi
             theta = self.theta
             psi = self.psi
-        if phi!=0 or theta!=0:
+            if allign_axis:
+                # allign principal axis to x-axis. (principal axis is first principal component from 3D points)
+                self.allign_cell_toaxis()
+        if phi!=0 or theta!=0 or psi!=0:
             for section in self.allsec:
                 for i in range(section.n3d()):
                     xyz = np.array([section.x3d(i),section.y3d(i),section.z3d(i)])
-                    xyz = np.dot(np.dot(_Rz(phi),np.dot(_Ry(theta),_Rx(psi))),xyz[:,None])
+                    R = np.dot(_Rz(phi),np.dot(_Ry(theta),_Rx(psi)))
+                    if inverse:
+                        R = R.T
+                    xyz = np.dot(R,xyz[:,None])
                     h.pt3dchange(i, xyz[0][0], xyz[1][0], xyz[2][0], section.diam3d(i), sec=section)
 
     def insertExtracellular(self, seclist='all', set_pointer_xtra=True):
@@ -222,10 +268,11 @@ class NeuronTemplate:
         ax.set_ylabel('y')
         ax.set_zlabel('z')
         ax.grid(visible=None)
-        ax.axis('off')
+        ax.axis('on')
         for k,v in colorkeyval.items():
             ax.plot(np.nan,np.nan,np.nan,label=k,color=v)
         ax.legend(frameon=False)
+        #ax.view_init(elev=0, azim=0)
         return ax
 
     def check_pointers(self,autoset = False):
