@@ -341,10 +341,13 @@ def replaceNeuronSectionsandFunTostr(obj):
 def recursiveDictUpdate(obj,value,checkhasattr_flag=True):
     for k,v in value.items():
         if isinstance(v,(dict,Dict)) and (not k in ['options']): # add in brackets parameter names that do not need to be checked typically dict with variable keys if dict with dict here else add on next line
-            if k in []:
-                recursiveDictUpdate(getattr(obj,k),Dict(v),checkhasattr_flag=False)
+            if len(v)==0:
+                setattr(obj,k,Dict(v))
             else:
-                recursiveDictUpdate(getattr(obj,k),Dict(v),checkhasattr_flag=True)
+                if k in []:
+                    recursiveDictUpdate(getattr(obj,k),Dict(v),checkhasattr_flag=False)
+                else:
+                    recursiveDictUpdate(getattr(obj,k),Dict(v),checkhasattr_flag=True)
         else:
             if v == 'removedToReduceMemory':
                 v = None
