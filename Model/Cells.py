@@ -106,7 +106,7 @@ class NeuronTemplate:
         # spherical angles
         phi = np.arctan2(p1[1],p1[0])
         try:
-            na = self.apic[-1].n3d()-1
+            na = self.apicalTrunk[-1].n3d()-1
             xyz = np.array([self.apic[-1].x3d(na),self.apic[-1].y3d(na),self.apic[-1].z3d(na)])
             angle = np.arccos(np.dot(xyz/np.linalg.norm(xyz),p1))
             phi = phi+np.pi if angle>np.pi/2 else phi
