@@ -32,7 +32,10 @@ def AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,
     iOptogenx = calciOptogenx(input,t,traces)
 
     # succes Ratio
-    succes_ratio = calcSuccesratio(input,t,aptimevectors[idx_sR],ostim_time,ostim_amp,estim_time,estim_amp)
+    if aptimevectors is not None:
+        succes_ratio = calcSuccesratio(input,t,aptimevectors[idx_sR],ostim_time,ostim_amp,estim_time,estim_amp)
+    else:
+        succes_ratio = None
 
     # plot recorded traces
     if vsoma is not None:

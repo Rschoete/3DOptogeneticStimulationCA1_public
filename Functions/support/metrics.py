@@ -2,6 +2,9 @@ import numpy as np
 def calciOptogenx(input,t,traces):
     iOptogenx = None
     if input.analysesopt.recordTotalOptogeneticCurrent:
+        if traces is None:
+            print('try to recordTotalOptogeneticCurrent but not traces recorded (traces is None)')
+            return iOptogenx
         iOptogenx = {'abs':{'total':0}, 'spec':{'total':0}}
         tintm = np.array(t)
         idx = (tintm>=input.stimopt.Ostimparams.delay) & (tintm<=(input.stimopt.Ostimparams.delay+input.stimopt.Ostimparams.dur+1000))
