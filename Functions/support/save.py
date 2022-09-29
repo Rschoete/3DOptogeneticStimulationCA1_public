@@ -2,6 +2,7 @@ from ..globalFunctions.utils import MyEncoder, applysigniftoall, get_size
 import json
 import numpy as np
 import time
+from datetime import datetime
 
 def SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos,iOptogenx, succes_ratio,amps_SDeVstim,amps_SDoptogenx,pos_VTAeVstim,pos_VTAoptogenx,runtime,seed,results_dir):
     test_flag = input.test_flag
@@ -17,9 +18,9 @@ def SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,
         inputData = applysigniftoall(inputData,input.signif)
     inputData['runtime'] = runtime
     inputData['settings'] = input.todict(reduce=True,inplace=False) # this line last because inplace=False does not work -> always inplace
-
-    with open(inputname, 'w') as outfile:
-        json.dump(inputData, outfile, indent = 4, signif=input.signif,  cls=MyEncoder)
+    if input.save_input_flag:
+        with open(inputname, 'w') as outfile:
+            json.dump(inputData, outfile, indent = 4, signif=input.signif,  cls=MyEncoder)
 
     # save results
     resultsname = results_dir+'/data.json'
@@ -41,13 +42,17 @@ def SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,
     if input.signif is not None:
         data = applysigniftoall(data,input.signif)
 
+    if input.save_data_flag:
+        save_data_wCorrectSaveTest(resultsname,data,test_flag=test_flag,indent=4,signif=input.signif)
+    return inputData, data
 
+def save_data_wCorrectSaveTest(resultsname,data,*,test_flag,indent,signif):
     noCorrectSave = True
     counter = 1
     while noCorrectSave:
         print(f'saving results, attempt {counter}')
         with open(resultsname, 'w') as outfile:
-            json.dump(data, outfile, indent = 4, signif=input.signif,  cls=MyEncoder)
+            json.dump(data, outfile, indent = indent, signif=signif,  cls=MyEncoder)
         if not test_flag:
             time.sleep(counter*10)
         try:
@@ -62,7 +67,6 @@ def SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,
                 noCorrectSave = False
             counter+=1
     print('\n!!Save successful !!')
-    return inputData, data
 
 def addOSinfo(cell,opsinmech,stiminfo):
     out = {}
@@ -106,3 +110,10 @@ def addTracestoResults(traces,df):
         for trace,name in zip(*v.values()):
             out[k][name] = np.array(trace)[::max(int(df),1)]
     return out
+
+def createFolder(input):
+    now = datetime.now()
+    dt_string = now.strftime("%Y%m%d%H%M")
+    results_dir = "./Results%s/Results_%s_%s_%s"%(input.resultsFolder, input.subfolderSuffix,input.cellsopt.neurontemplate,dt_string)
+    fig_dir = results_dir+"/Figures"
+    return results_dir, fig_dir
