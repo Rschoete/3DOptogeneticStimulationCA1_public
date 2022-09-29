@@ -130,7 +130,7 @@ def fieldStimulation(input, cell = None, verbose = False, **kwargs):
 
 
     # Optical field
-    ostim_amp = []; ostim_time = []; totalos = 0; edts = []; esimtimes = []
+    ostim_amp = []; ostim_time = []; totalos = 0; odts = []; osimtimes = []
     if 'Optogxstim' in input.stimopt.stim_type:
         print('\t* Optogenetics stimulation')
         params = input.stimopt.Ostimparams
@@ -187,7 +187,7 @@ def fieldStimulation(input, cell = None, verbose = False, **kwargs):
         print('\t  ',[f"{spos} -> {pos}" if pos is not None else f"{spos} -> None" for spos,pos in zip(VTAopt.startpos,pos_VTAOptogenx)],'\n')
 
 
-    t=None; vsoma=None; traces = None; apcounts = None; aptimevectors=None; apinfo=None
+    t=None; vsoma=None; traces = None; apcounts = None; aptimevectors=None; apinfo=None; idx_sR = None
     if 'normal' in input.simulationType:
 
         if estim_amp is not None and len(estim_amp)>0:
@@ -273,11 +273,16 @@ def gridFieldStimulation(input,xposs=[0],yposs=list(np.arange(0,2000,200)),zposs
     cell = None; Optogxfield = None; firstrun = True
     inputs_all = {}; data_all = {}
     now = datetime.now(); dt_string = now.strftime("%Y%m%d%H%M")
+    timerstart = time.time()
 
     for rot in rots:
-        for xpos in xposs:
-            for ypos in yposs:
-                for zpos in zposs:
+        xpos_succes = np.zeros(len(xposs))
+        for ix,xpos in enumerate(xposs):
+            ypos_succes = np.zeros(len(yposs))
+            for iy,ypos in enumerate(yposs):
+                zpos_succes = np.zeros(len(zposs))
+                for iz,zpos in enumerate(zposs):
+
                     key = f"rot{rot*180/np.pi:0.2f}-x{xpos:0.2f}-y{ypos:0.2f}-z{zpos:0.2f}"
 
                     myinput = stp.simParams(input)
@@ -306,6 +311,24 @@ def gridFieldStimulation(input,xposs=[0],yposs=list(np.arange(0,2000,200)),zposs
                         del data['eVstim']
                     data_all[key] = data
 
+                    # break loop when no value in SDcurve found
+                    # next value will result in even lower intensities (we shift neuron away from source)
+                    if not all([x is None for x in data['SDcurve']['Optogenx']]):
+                        zpos_succes[iz] = 1
+                    if all([x is None for x in data['SDcurve']['Optogenx']]) and iz>1 and sum(zpos_succes[iz-1:iz+1])==0:
+                        break
+                if sum(zpos_succes)>0:
+                    ypos_succes[iy]=1
+                if all([x is None for x in data['SDcurve']['Optogenx']]) and iy>2 and sum(ypos_succes[iy-1:iy+1])==0:
+                    break
+            if sum(ypos_succes)>0:
+                xpos_succes[ix]=1
+            if all([x is None for x in data['SDcurve']['Optogenx']]) and ix>2 and sum(xpos_succes[ix-1:ix+1])==0:
+                break
+
+    timerstop = time.time()
+    print(f'\nTotal time gridFieldSimulation: {timerstop-timerstart:.2f} s\n')
+    print('Saving Results')
     from Functions.support.save import save_data_wCorrectSaveTest
     results_dir = results_dir.rsplit('/',1)[0]
     os.makedirs(results_dir, exist_ok=True)

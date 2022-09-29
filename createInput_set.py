@@ -1,6 +1,3 @@
-from importlib.metadata import distribution
-
-
 if __name__ == '__main__':
     import Functions.setup as stp
     import matplotlib.pyplot as plt
@@ -92,7 +89,6 @@ if __name__ == '__main__':
 
                             input.analysesopt.recordSuccesRatio = False
                             input.analysesopt.sec_plot_flag = False
-                            input.analysesopt.recordTraces = Dict()
                             input.analysesopt.save_traces = False
 
                             with open(filenameopt,'w') as file:
