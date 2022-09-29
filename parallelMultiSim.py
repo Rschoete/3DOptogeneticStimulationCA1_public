@@ -32,6 +32,10 @@ with open(finishedpath, 'w') as fp:
 with open(filepath) as f:
     inputsToDO = [line.rstrip('\n') for line in f]
 
+if filepath.endswith('.csv'):
+    if not '.' in inputsToDO[0][-7:]:
+        inputsToDO.pop(0)
+
 
 # initialise flags to record process
 busy_process_flags = [False]*numprocess
