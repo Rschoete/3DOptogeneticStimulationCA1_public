@@ -19,7 +19,7 @@ import Functions.globalFunctions.ExtracellularField as eF
 import Functions.support as sprt
 import Functions.globalFunctions.featExtract as featE
 
-def fieldStimulation(input, cell = None, verbose = False):
+def fieldStimulation(input, cell = None, verbose = False, **kwargs):
     print("\n\nDate and time =", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
     if not isinstance(input.simulationType,list):
         input.simulationType = [input.simulationType]
@@ -118,6 +118,8 @@ def fieldStimulation(input, cell = None, verbose = False):
     if 'eVstim' in input.stimopt.stim_type:
         print('\t* extracellular electrical stimulation')
         params = input.stimopt.Estimparams
+        if 'eVfield' in kwargs.keys() and kwargs['eVfield'] is not None:
+            params['field'] = kwargs['eVfield']
         if params['field'] is None:
             field = np.genfromtxt(params['filepath'],comments='%')
             params['field'] = eF.prepareDataforInterp(field, params['method_prepareData'])
@@ -132,6 +134,8 @@ def fieldStimulation(input, cell = None, verbose = False):
     if 'Optogxstim' in input.stimopt.stim_type:
         print('\t* Optogenetics stimulation')
         params = input.stimopt.Ostimparams
+        if 'Optogxfield' in kwargs.keys() and kwargs['Optogxfield'] is not None:
+            params['field'] = kwargs['Optogxfield']
         if params['field'] is None:
             field = np.genfromtxt(params['filepath'],comments='%')
             params['field'] = eF.prepareDataforInterp(field, params['method_prepareData'])
@@ -241,10 +245,7 @@ def fieldStimulation(input, cell = None, verbose = False):
             print(f"simulation finished in {timer_stopsim-timer_startsim:0.2f} s\n")
 
     # Create folders:
-    now = datetime.now()
-    dt_string = now.strftime("%Y%m%d%H%M")
-    results_dir = "./Results%s/Results_%s_%s_%s"%(input.resultsFolder, input.subfolderSuffix,input.cellsopt.neurontemplate,dt_string)
-    fig_dir = results_dir+"/Figures"
+    results_dir,fig_dir = sprt.save.createFolder(input)
     if input.save_flag:
         os.makedirs(results_dir, exist_ok=True)
         os.makedirs(fig_dir, exist_ok=True)
@@ -262,27 +263,56 @@ def fieldStimulation(input, cell = None, verbose = False):
     # Saving Data
     # ----------------------------------------------------------
     print('Saving Data')
+    eVfield = input.stimopt.Estimparams['field'] # store fields in new variable before overwritten in SaveResults -> can be passed onto new simulation in **kwargs
+    Optogxfield = input.stimopt.Ostimparams['field']
     inputdata,data = sprt.SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos, iOptogenx, succes_ratio,amps_SDeVstim,amps_SDoptogenx,VTAeVstim,VTAOptogenx,timerstop-timerstart,seed,results_dir)
-    return inputdata, data, cell
+    return inputdata, data, cell, Optogxfield, eVfield
 
-def gridFieldStimulation(input,xposs=list(np.arange(0,2000,200)),yposs=[0],zposs=list(np.arange(0,5000,500)),rots=list(2/12*np.pi*np.arange(4))):
+def gridFieldStimulation(input,xposs=[0],yposs=list(np.arange(0,2000,200)),zposs=list(np.arange(0,5000,500)),rots=list(1/3*np.pi*np.arange(2))):
     import Functions.setup as stp
-    xposs = list(np.arange(0,2000,2000));yposs=[0];zposs=list(np.arange(0,5000,2500))
-    cell = None
+    cell = None; Optogxfield = None; firstrun = True
+    inputs_all = {}; data_all = {}
+    now = datetime.now(); dt_string = now.strftime("%Y%m%d%H%M")
+
     for rot in rots:
         for xpos in xposs:
             for ypos in yposs:
                 for zpos in zposs:
+                    key = f"rot{rot*180/np.pi:0.2f}-x{xpos:0.2f}-y{ypos:0.2f}-z{zpos:0.2f}"
+
                     myinput = stp.simParams(input)
-                    myinput.simulationType = ['normal']
-                    myinput.duration = 120
-                    myinput.subfolderSuffix = myinput.subfolderSuffix+'/'
-                    myinput.cellsopt.init_options.theta = -np.pi/2
+                    myinput.resultsFolder = myinput.resultsFolder+dt_string
+                    myinput.subfolderSuffix = key
                     myinput.cellsopt.init_options.psi = rot
                     myinput.stimopt.Ostimparams.options['xT'] = [float(xpos),float(ypos),float(zpos)]
-                    #myinput.plot_flag = True
-                    myinput.stimopt.Ostimparams.options['psi'] = 0
-                    _,_,cell= fieldStimulation(myinput,cell=cell)
+
+                    results_dir,_ = sprt.save.createFolder(myinput)
+                    myinput,data,cell,Optogxfield, _= fieldStimulation(myinput,cell=cell,Optogxfield=Optogxfield)
+
+                    #Store Info
+                    if firstrun:
+                        firstrun = False
+                        if 'recordTraces' in myinput['settings']['analysesopt'].keys():
+                            del myinput['settings']['analysesopt']['recordTraces']
+                        inputs_all['info'] = myinput
+
+                    inputs_all[key]={'xT':myinput['settings']['stimopt']['Ostimparams']['options']['xT']}
+                    for k in ['phi','theta','psi']:
+                        inputs_all[key][k]=myinput['settings']['cellsopt']['init_options'][k]
+
+                    if 'traces' in data.keys():
+                        del data['traces']
+                    if 'eVstim' in data.keys():
+                        del data['eVstim']
+                    data_all[key] = data
+
+    from Functions.support.save import save_data_wCorrectSaveTest
+    results_dir = results_dir.rsplit('/',1)[0]
+    os.makedirs(results_dir, exist_ok=True)
+    resultsname = results_dir+'\data.json'
+    inputsname = results_dir+'\input.json'
+    save_data_wCorrectSaveTest(resultsname,data_all,test_flag=False,indent=4,signif=myinput['settings']['signif'])
+    save_data_wCorrectSaveTest(inputsname,inputs_all,test_flag=False,indent=4,signif=myinput['settings']['signif'])
 
 
 if __name__ == '__main__':

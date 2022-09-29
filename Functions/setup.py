@@ -10,6 +10,8 @@ class simParams(object):
         self.test_flag = False
         self.plot_flag = True
         self.save_flag = True
+        self.save_data_flag = True
+        self.save_input_flag = True
         self.autosetPointer = True
 
         self.simulationType = ['normal'] #'normal', 'SD_Optogenx', 'SD_eVstim', 'VTA_Optogenx'
