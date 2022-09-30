@@ -268,63 +268,58 @@ def fieldStimulation(input, cell = None, verbose = False, **kwargs):
     inputdata,data = sprt.SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos, iOptogenx, succes_ratio,amps_SDeVstim,amps_SDoptogenx,VTAeVstim,VTAOptogenx,timerstop-timerstart,seed,results_dir)
     return inputdata, data, cell, Optogxfield, eVfield
 
-def gridFieldStimulation(input,xposs=[0],yposs=list(np.arange(0,2000,200)),zposs=list(np.arange(0,5000,500)),rots=list(1/3*np.pi*np.arange(2))):
+def gridFieldStimulation(input,xposs=[0],yposs=list(np.arange(0,2000,200)),zposs=list(np.arange(0,5000,500))):
     import Functions.setup as stp
     cell = None; Optogxfield = None; firstrun = True
     inputs_all = {}; data_all = {}
     now = datetime.now(); dt_string = now.strftime("%Y%m%d%H%M")
     timerstart = time.time()
 
-    for rot in rots:
-        xpos_succes = np.zeros(len(xposs))
-        for ix,xpos in enumerate(xposs):
-            ypos_succes = np.zeros(len(yposs))
-            for iy,ypos in enumerate(yposs):
-                zpos_succes = np.zeros(len(zposs))
-                for iz,zpos in enumerate(zposs):
 
-                    key = f"rot{rot*180/np.pi:0.2f}-x{xpos:0.2f}-y{ypos:0.2f}-z{zpos:0.2f}"
+    for xpos in xposs:
+        ypos_succes = np.zeros(len(yposs))
+        for iy,ypos in enumerate(yposs):
+            zpos_succes = np.zeros(len(zposs))
+            for iz,zpos in enumerate(zposs):
 
-                    myinput = stp.simParams(input)
-                    myinput.resultsFolder = myinput.resultsFolder+dt_string
-                    myinput.subfolderSuffix = key
-                    myinput.cellsopt.init_options.psi = rot
-                    myinput.stimopt.Ostimparams.options['xT'] = [float(xpos),float(ypos),float(zpos)]
+                key = f"x{xpos:0.2f}-y{ypos:0.2f}-z{zpos:0.2f}"
 
-                    results_dir,_ = sprt.save.createFolder(myinput)
-                    myinput,data,cell,Optogxfield, _= fieldStimulation(myinput,cell=cell,Optogxfield=Optogxfield)
+                myinput = stp.simParams(input)
+                myinput.resultsFolder = myinput.resultsFolder+dt_string
+                myinput.subfolderSuffix = key
+                myinput.stimopt.Ostimparams.options['xT'] = [float(xpos),float(ypos),float(zpos)]
 
-                    #Store Info
-                    if firstrun:
-                        firstrun = False
-                        if 'recordTraces' in myinput['settings']['analysesopt'].keys():
-                            del myinput['settings']['analysesopt']['recordTraces']
-                        inputs_all['info'] = myinput
+                results_dir,_ = sprt.save.createFolder(myinput)
+                myinput,data,cell,Optogxfield, _= fieldStimulation(myinput,cell=cell,Optogxfield=Optogxfield)
 
-                    inputs_all[key]={'xT':myinput['settings']['stimopt']['Ostimparams']['options']['xT']}
-                    for k in ['phi','theta','psi']:
-                        inputs_all[key][k]=myinput['settings']['cellsopt']['init_options'][k]
+                #Store Info
+                if firstrun:
+                    firstrun = False
+                    if 'recordTraces' in myinput['settings']['analysesopt'].keys():
+                        del myinput['settings']['analysesopt']['recordTraces']
+                    inputs_all['info'] = myinput
 
-                    if 'traces' in data.keys():
-                        del data['traces']
-                    if 'eVstim' in data.keys():
-                        del data['eVstim']
-                    data_all[key] = data
+                inputs_all[key]={'xT':myinput['settings']['stimopt']['Ostimparams']['options']['xT']}
+                for k in ['phi','theta','psi']:
+                    inputs_all[key][k]=myinput['settings']['cellsopt']['init_options'][k]
 
-                    # break loop when no value in SDcurve found
-                    # next value will result in even lower intensities (we shift neuron away from source)
-                    if not all([x is None for x in data['SDcurve']['Optogenx']]):
-                        zpos_succes[iz] = 1
-                    if all([x is None for x in data['SDcurve']['Optogenx']]) and iz>1 and sum(zpos_succes[iz-1:iz+1])==0:
-                        break
-                if sum(zpos_succes)>0:
-                    ypos_succes[iy]=1
-                if all([x is None for x in data['SDcurve']['Optogenx']]) and iy>2 and sum(ypos_succes[iy-1:iy+1])==0:
+                if 'traces' in data.keys():
+                    del data['traces']
+                if 'eVstim' in data.keys():
+                    del data['eVstim']
+                data_all[key] = data
+
+                # break loop when no value in SDcurve found
+                # next value will result in even lower intensities (we shift neuron away from source)
+                if not all([x is None for x in data['SDcurve']['Optogenx']]):
+                    zpos_succes[iz] = 1
+                if all([x is None for x in data['SDcurve']['Optogenx']]) and iz>1 and sum(zpos_succes[iz-1:iz+1])==0:
                     break
-            if sum(ypos_succes)>0:
-                xpos_succes[ix]=1
-            if all([x is None for x in data['SDcurve']['Optogenx']]) and ix>2 and sum(xpos_succes[ix-1:ix+1])==0:
+            if sum(zpos_succes)>0:
+                ypos_succes[iy]=1
+            if all([x is None for x in data['SDcurve']['Optogenx']]) and iy>2 and sum(ypos_succes[iy-1:iy+1])==0:
                 break
+
 
     timerstop = time.time()
     print(f'\nTotal time gridFieldSimulation: {timerstop-timerstart:.2f} s\n')
