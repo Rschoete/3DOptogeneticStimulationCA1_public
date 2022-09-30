@@ -210,7 +210,7 @@ class NeuronTemplate:
             # h.Shape needs to be called to init 3d positions of sections
             global hShape_flag
             if not hShape_flag:
-                h.Shape(False)
+                h.define_shape()
                 hShape_flag = True
             soma_pos = np.array([[self.soma[0].x3d(i),self.soma[0].y3d(i),self.soma[0].z3d(i)] for i in range(self.soma[0].n3d())])
             soma_pos = np.mean(soma_pos,axis=0)
@@ -239,7 +239,7 @@ class NeuronTemplate:
         global hShape_flag
         if not hShape_flag:
             # h.Shape needs to be called but only !!once!! otherwise problems with translation
-            h.Shape(False)
+            h.define_shape()
             hShape_flag = True
 
         colorlist = []
@@ -750,7 +750,7 @@ if __name__ == '__main__':
     cell.insertOptogenetics(cell.alldend)
 
     if not hShape_flag:
-        h.Shape(False)
+        h.define_shape()
         hShape_flag = True
 
     #Gather sec positions before movement
