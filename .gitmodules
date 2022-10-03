@@ -1,5 +1,5 @@
 [submodule "Functions/globalFunctions"]
 	path = Functions/globalFunctions
-	url = https://github.com/Rschoete/globalFunctions.git
+	url = https://github.ugent.be/WiCa/globalFunctions_PyNeNet.git
 	update = merge
 	branch = main
