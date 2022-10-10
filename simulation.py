@@ -327,8 +327,8 @@ def gridFieldStimulation(input,xposs=[0],yposs=list(np.arange(0,2000,200)),zposs
     from Functions.support.save import save_data_wCorrectSaveTest
     results_dir = results_dir.rsplit('/',1)[0]
     os.makedirs(results_dir, exist_ok=True)
-    resultsname = results_dir+'\data.json'
-    inputsname = results_dir+'\input.json'
+    resultsname = results_dir+'/data.json'
+    inputsname = results_dir+'/input.json'
     save_data_wCorrectSaveTest(resultsname,data_all,test_flag=False,indent=4,signif=myinput['settings']['signif'])
     save_data_wCorrectSaveTest(inputsname,inputs_all,test_flag=False,indent=4,signif=myinput['settings']['signif'])
 
