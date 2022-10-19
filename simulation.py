@@ -268,12 +268,37 @@ def fieldStimulation(input, cell = None, verbose = False, **kwargs):
     inputdata,data = sprt.SaveResults(input,cell,t,vsoma,traces,apcounts,aptimevectors,apinfo,totales,totalos, iOptogenx, succes_ratio,amps_SDeVstim,amps_SDoptogenx,VTAeVstim,VTAOptogenx,timerstop-timerstart,seed,results_dir)
     return inputdata, data, cell, Optogxfield, eVfield
 
-def gridFieldStimulation(input,xposs=[0],yposs=list(np.arange(0,2000,200)),zposs=list(np.arange(0,5000,500))):
+def gridFieldStimulation(input,xposs=None,yposs=None,zposs=None, overWriteSave = None):
     import Functions.setup as stp
     cell = None; Optogxfield = None; firstrun = True
     inputs_all = {}; data_all = {}
     now = datetime.now(); dt_string = now.strftime("%Y%m%d%H%M")
     timerstart = time.time()
+    suffix = ''
+
+    if xposs is None:
+        xposs = [0]
+    else:
+        xposs = xposs if isinstance(xposs,list) else [xposs]
+        suffix += f'_x{xposs[0]}'
+        if len(xposs)>1:
+            suffix += f'-{xposs[-1]}'
+
+    if yposs is None:
+        yposs = list(np.arange(0,2000,200))
+    else:
+        yposs = yposs if isinstance(yposs,list) else [yposs]
+        suffix += f'_y{yposs[0]}'
+        if len(yposs)>1:
+            suffix += f'-{yposs[-1]}'
+
+    if zposs is None:
+        zposs = list(np.arange(0,5000,500))
+    else:
+        zposs = zposs if isinstance(zposs,list) else [zposs]
+        suffix += f'_z{zposs[0]}'
+        if len(zposs)>1:
+            suffix += f'-{zposs[-1]}'
 
 
     for xpos in xposs:
@@ -288,6 +313,8 @@ def gridFieldStimulation(input,xposs=[0],yposs=list(np.arange(0,2000,200)),zposs
                 myinput.resultsFolder = myinput.resultsFolder+dt_string
                 myinput.subfolderSuffix = key
                 myinput.stimopt.Ostimparams.options['xT'] = [float(xpos),float(ypos),float(zpos)]
+                if overWriteSave is not None:
+                    myinput.save_flag = bool(overWriteSave)
 
                 results_dir,_ = sprt.save.createFolder(myinput)
                 myinput,data,cell,Optogxfield, _= fieldStimulation(myinput,cell=cell,Optogxfield=Optogxfield)
@@ -327,8 +354,8 @@ def gridFieldStimulation(input,xposs=[0],yposs=list(np.arange(0,2000,200)),zposs
     from Functions.support.save import save_data_wCorrectSaveTest
     results_dir = results_dir.rsplit('/',1)[0]
     os.makedirs(results_dir, exist_ok=True)
-    resultsname = results_dir+'/data.json'
-    inputsname = results_dir+'/input.json'
+    resultsname = results_dir+f'/data{suffix}.json'
+    inputsname = results_dir+f'/input{suffix}.json'
     save_data_wCorrectSaveTest(resultsname,data_all,test_flag=False,indent=4,signif=myinput['settings']['signif'])
     save_data_wCorrectSaveTest(inputsname,inputs_all,test_flag=False,indent=4,signif=myinput['settings']['signif'])
 
@@ -365,24 +392,24 @@ if __name__ == '__main__':
 
 
 
-    input = stp.simParams({'duration':200, 'test_flag':True,'save_flag': True, 'plot_flag': False})
+    input = stp.simParams({'duration':200, 'test_flag':True,'save_flag': True, 'plot_flag': True})
 
-    input.stimopt.stim_type = ['Optogxstim','eVstim']
+    input.stimopt.stim_type = ['Optogxstim']
     input.cellsopt.neurontemplate = Cells.NeuronTemplates[0]
-    input.simulationType = ['normal','SD_eVstim','SD_Optogenx','VTA_Optogenx']
+    input.simulationType = ['normal']
     input.cellsopt.opsin_options.opsinlocations = 'apicalnoTuft'
     input.cellsopt.opsin_options.Gmax_total = None #uS
     input.cellsopt.opsin_options.distribution = lambda x: 1000*(np.exp(-np.linalg.norm(np.array(x)-[0,0,0])/200))
     input.v0 = -70
 
-    input.stimopt.Ostimparams.field = eF.prepareDataforInterp(field,'ninterp')
+    input.stimopt.Ostimparams.filepath = "Inputs/LightIntensityProfile/Ugent470_gray_invitro_np1e7_res5emin3_cyl_5x10_gf1.txt"
     input.stimopt.Ostimparams.amp = 10
     input.stimopt.Ostimparams.delay = 100
-    input.stimopt.Ostimparams.pulseType = 'pulseTrain'
+    input.stimopt.Ostimparams.pulseType = 'singleSquarePulse'
     input.stimopt.Ostimparams.dur = 50
-    input.stimopt.Ostimparams.options = {'prf':1/2000,'dc':1/20000, 'phi': np.pi/2, 'xT': [0,0,100]}
+    input.stimopt.Ostimparams.options = {'prf':1/2000,'dc':1/20000,'theta':-np.pi/2, 'xT': [0,0,100]}
 
-
+    '''
     input.stimopt.Estimparams.filepath = 'Inputs\ExtracellularPotentials\Reference - recessed\PotentialDistr-600um-20umMESH_structured.txt'#'Inputs\ExtracellularPotentials\Reference - recessed\PotentialDistr-600um-20umMESH_refined_masked_structured.txt'
     input.stimopt.Estimparams.delay = input.duration+50
     input.stimopt.Estimparams.dur = 10
@@ -416,6 +443,7 @@ if __name__ == '__main__':
     input.analysesopt.VTAOptogenx.options['scale_initsearch'] = 4
     input.analysesopt.VTAOptogenx.searchdir = np.array([1,0,0])
     input.analysesopt.VTAOptogenx.startpos = np.array([np.zeros(5)+24,np.zeros(5),[1,5,10,20,30]]).T
+    '''
 
     input.analysesopt.succesRatioOptions['window'] = 100
 
