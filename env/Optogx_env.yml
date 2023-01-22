@@ -58,4 +58,8 @@ dependencies:
   - xz=5.2.5=h8cc25b3_1
   - zlib=1.2.12=h8cc25b3_2
   - zstd=1.5.2=h19a0ad4_0
+  - pip:
+      - dill==0.3.6
+      - multiprocess==0.70.14
+      - salib==1.4.7
 prefix: C:\Users\rschoete\Anaconda3\envs\Optogx
