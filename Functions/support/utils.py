@@ -12,8 +12,8 @@ def convert_strtoseclist(cell, location):
         location = cell.alldend
     elif location.lower() in ['apic', 'apical']:
         location = cell.apical
-    elif location.lower() in ['basal', 'dend']:
-        location = cell.dend
+    elif location.lower() in ['basal']:
+        location = cell.basaldend
     elif location.lower() == 'apicaltrunk':
         location = cell.apicalTrunk
     elif location.lower() == 'apicaltrunk_ext':

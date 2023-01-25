@@ -288,6 +288,7 @@ class analysesOptions(Dict):
         self.SDeVstim.stimtype = 'cathodic'
         self.SDeVstim.stimpointer = 'estim_xtra'
         self.SDeVstim.nr_pulseOI = 1
+        self.SDeVstim.return_spikeCountperPulse = True
         self.SDeVstim.options = dict(
             vinit=-65, simdur=400, dc_sdc=0.5, n_iters=7)
 
@@ -298,6 +299,8 @@ class analysesOptions(Dict):
         self.SDOptogenx.stimtype = 'optogenx'
         self.SDOptogenx.stimpointer = 'ostim_xtra'
         self.SDOptogenx.nr_pulseOI = 1
+        self.SDOptogenx.return_spikeCountperPulse = True
+        self.SDOptogenx.record_iOptogenx = None  # opsin mechanisme e.g., 'chr2h134r'
         # for scale_initsearch = 10 error is 1/(2**7)
         self.SDOptogenx.options = dict(
             vinit=-65, simdur=400, dc_sdc=0.5, n_iters=7)

@@ -180,9 +180,9 @@ def fieldStimulation(input, cell=None, verbose=False, **kwargs):
         params = input.stimopt.Estimparams
         SDcopt.cellrecloc = sprt.convert_strtoseg(cell, SDcopt.cellrecloc)
         amps_SDeVstim = featE.SD_curve_xstim(h, cell, SDcopt.durs, params['field'], SDcopt.startamp, SDcopt.cellrecloc, SDcopt.stimtype,
-                                             stimpointer=SDcopt.stimpointer, nr_pulseOI=SDcopt.nr_pulseOI, estimoptions=params['options'].copy(), **SDcopt.options)
+                                             stimpointer=SDcopt.stimpointer, nr_pulseOI=SDcopt.nr_pulseOI, estimoptions=params['options'].copy(), return_spikeCountperPulse=SDcopt.return_spikeCountperPulse, **SDcopt.options)
         print('\t  ', [f"{dur:0.2e} -> {amp:0.2e}" if amp is not None else f"{dur:0.2e} -> None" for dur,
-              amp in zip(SDcopt.durs, amps_SDeVstim)], '\n')
+              amp in zip(SDcopt.durs, amps_SDeVstim[0])], '\n')
 
     if 'SD_Optogenx' in input.simulationType:
         print('\t* SD_Optogenx')
@@ -190,9 +190,9 @@ def fieldStimulation(input, cell=None, verbose=False, **kwargs):
         params = input.stimopt.Ostimparams
         SDcopt.cellrecloc = sprt.convert_strtoseg(cell, SDcopt.cellrecloc)
         amps_SDoptogenx = featE.SD_curve_xstim(h, cell, SDcopt.durs, params['field'], SDcopt.startamp, SDcopt.cellrecloc, SDcopt.stimtype,
-                                               stimpointer=SDcopt.stimpointer, nr_pulseOI=SDcopt.nr_pulseOI, estimoptions=params['options'].copy(), **SDcopt.options)
+                                               stimpointer=SDcopt.stimpointer, nr_pulseOI=SDcopt.nr_pulseOI, estimoptions=params['options'].copy(), record_iOptogenx=SDcopt.record_iOptogenx, return_spikeCountperPulse=SDcopt.return_spikeCountperPulse, **SDcopt.options)
         print('\t  ', [f"{dur:0.2e} -> {amp:0.2e}" if amp is not None else f"{dur:0.2e} -> None" for dur,
-              amp in zip(SDcopt.durs, amps_SDoptogenx)], '\n')
+              amp in zip(SDcopt.durs, amps_SDoptogenx[0])], '\n')
 
     if any([x in input.simulationType for x in ['VTA_eVstim', 'VTA_Optogenx']]):
         print('Calculating VTA')
@@ -469,7 +469,7 @@ if __name__ == '__main__':
 
     input.stimopt.stim_type = ['Optogxstim']
     input.cellsopt.neurontemplate = Cells.NeuronTemplates[0]
-    input.simulationType = ['normal']
+    input.simulationType = ['normal', 'SD_Optogenx']
     input.cellsopt.opsin_options.opsinlocations = 'apicalnoTuft'
     input.cellsopt.opsin_options.Gmax_total = None  # uS
     input.cellsopt.opsin_options.distribution = lambda x: 1000 * \
@@ -477,7 +477,7 @@ if __name__ == '__main__':
     input.v0 = -70
 
     #input.stimopt.Ostimparams.filepath = "Inputs/LightIntensityProfile/Ugent470_gray_invitro_np1e7_res5emin3_cyl_5x10_gf1.txt"
-    input.stimopt.Ostimparams.field = field
+    input.stimopt.Ostimparams.filepath = 'Inputs/LightIntensityProfile/constant.txt'
     input.stimopt.Ostimparams.amp = 10
     input.stimopt.Ostimparams.delay = 100
     input.stimopt.Ostimparams.pulseType = 'singleSquarePulse'
@@ -485,6 +485,11 @@ if __name__ == '__main__':
     input.stimopt.Ostimparams.options = {
         'prf': 1/2000, 'dc': 1/20000, 'theta': -np.pi/2, 'xT': [0, 0, 100]}
 
+    input.analysesopt.SDOptogenx.record_iOptogenx = 'chr2h134r'
+    input.analysesopt.SDOptogenx.options['n_iters'] = 2
+    input.analysesopt.SDOptogenx.durs = np.logspace(-2, 1, 2)
+    input.analysesopt.SDOptogenx.startamp = 1000
+    input.analysesopt.SDOptogenx.nr_pulseOI = 2
     '''
     input.stimopt.Estimparams.filepath = 'Inputs\ExtracellularPotentials\Reference - recessed\PotentialDistr-600um-20umMESH_structured.txt'#'Inputs\ExtracellularPotentials\Reference - recessed\PotentialDistr-600um-20umMESH_refined_masked_structured.txt'
     input.stimopt.Estimparams.delay = input.duration+50
