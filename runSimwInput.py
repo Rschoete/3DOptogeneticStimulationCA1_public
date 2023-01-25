@@ -1,10 +1,11 @@
-import sys
-import os
 import json
+import os
+import sys
+
 if __name__ == '__main__':
 
-    from simulation import *
     import Functions.setup as stp
+    from simulation import *
 
     try:
         filepath= sys.argv[1]

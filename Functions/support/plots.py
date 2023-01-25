@@ -1,7 +1,9 @@
 import matplotlib.pyplot as plt
-from ..globalFunctions import morphology_v2 as mphv2
 import numpy as np
-from .utils import convert_strtoseg, convert_strtoseclist, convert_strtosec
+
+from ..globalFunctions import morphology_v2 as mphv2
+from .utils import convert_strtosec, convert_strtoseclist, convert_strtoseg
+
 colorkeyval = {'soma':'tab:red', 'axon':'tomato','apical trunk':'tab:blue','apical trunk ext':'royalblue', 'apical tuft': 'tab:green','apical obliques': 'tab:cyan', 'basal dendrites': 'tab:olive', 'unclassified':[0,0,0]}
 
 def shapePlot(h,cell,shapeplotsinfo, axsettings,save_flag, figdir = '.', extension = '.png'):

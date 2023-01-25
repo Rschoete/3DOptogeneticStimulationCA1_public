@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
-from .plots import *
+
 from .metrics import *
+from .plots import *
+
 
 def AnalysesWrapper(h,input,cell,t,vsoma,traces,ostim_time,ostim_amp,estim_time,estim_amp,aptimevectors,apinfo,idx_sR,amps_SDeVstim,amps_SDoptogenx,pos_VTAeVstim,pos_VTAoptogenx,fig_dir):
 

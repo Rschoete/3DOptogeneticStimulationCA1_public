@@ -11,7 +11,7 @@ if __name__ == '__main__':
 
     now = datetime.now()
     dt_string = now.strftime("%Y%m%d")
-    folder = './Inputs/SDC%s/'%dt_string
+    folder = './Inputs/SDC%s_Pyr5NNLarge470inVivoGray/'%dt_string
     os.makedirs(folder, exist_ok=True)
     runlist_filenameoptall = folder+'runlistopt'
 
@@ -53,7 +53,7 @@ if __name__ == '__main__':
 
                             input = stp.simParams({'test_flag':False,'save_data_flag':False,'save_input_flag':False,'save_flag': True, 'plot_flag': False})
 
-                            input.resultsFolder = '/SDC/'+f'{cell}_{opsinloc}_np{nrp}_{iter}'
+                            input.resultsFolder = '/SDC_NN470Large_gray_invitro/'+f'{cell}_{opsinloc}_np{nrp}_{iter}'
                             input.subfolderSuffix = ''
 
                             input.duration = 100
@@ -69,7 +69,7 @@ if __name__ == '__main__':
                             input.cellsopt.opsin_options.distribution = distr
                             input.cellsopt.init_options.theta = -np.pi/2 # allign axo-somato-dendritic axis with z-axis
 
-                            input.stimopt.Ostimparams.filepath = 'Inputs/LightIntensityProfile/Ugent470nIrr_np1e7_res5emin3_gf1_cyl_5x10.txt'
+                            input.stimopt.Ostimparams.filepath = 'Inputs/LightIntensityProfile/NeuroNexus470Large_gray_invivo_np1e7_res5emin3_cyl_5x10_gf1.txt'
                             input.stimopt.Ostimparams.amp = 1/3*10**5
                             input.stimopt.Ostimparams.delay = 100
                             input.stimopt.Ostimparams.pulseType = 'pulseTrain'

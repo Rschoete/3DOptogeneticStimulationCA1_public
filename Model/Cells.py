@@ -417,6 +417,7 @@ class CA1_PC_cAC_sig5(NeuronTemplate):
         self.allsec = []
         self.alldend = []
         self.apicalTrunk = []
+        self.basaldend = []
         apicalTrunk = ['apic[0]', 'apic[6]', 'apic[8]', 'apic[10]', 'apic[12]', 'apic[18]', 'apic[20]', 'apic[24]',
                        'apic[26]', 'apic[30]', 'apic[46]', 'apic[60]', 'apic[62]', 'apic[66]', 'apic[68]', 'apic[70]']
 
@@ -444,6 +445,8 @@ class CA1_PC_cAC_sig5(NeuronTemplate):
                 self.apicalTuft.append(x)
             if any([y in str(x) for y in obliques]):
                 self.apical_obliques.append(x)
+            if 'dend' in str(x):
+                self.basaldend.append(x)
 
 
 class CA1_PC_cAC_sig6(NeuronTemplate):
@@ -469,6 +472,7 @@ class CA1_PC_cAC_sig6(NeuronTemplate):
         self.allsec = []
         self.alldend = []
         self.apicalTrunk = []
+        self.basaldend = []
         apicalTrunk = [f'apic[{i}]' for i in [
             0, 8, 9, 11, 13, 19, 21, 23, 27, 31, 35]]
 
@@ -495,6 +499,8 @@ class CA1_PC_cAC_sig6(NeuronTemplate):
                 self.apicalTuft.append(x)
             if any([y in str(x) for y in obliques]):
                 self.apical_obliques.append(x)
+            if 'dend' in str(x):
+                self.basaldend.append(x)
 
 
 class bACnoljp8(NeuronTemplate):
@@ -834,6 +840,51 @@ def _colorsecs(mylist, seclist, cell):
     plt.show(block=False)
 
 
+def _print_area(cell, seclist_names):
+    areas = {}
+    for sec_name in seclist_names:
+        areas[sec_name] = 0
+        if hasattr(cell, sec_name) and len(getattr(cell, sec_name)):
+            for sec in getattr(cell, sec_name):
+                for seg in sec:
+                    areas[sec_name] += seg.area()
+    print('Areas:')
+    for k, v in areas.items():
+        print(f'{k}: {v:0.2f} um2')
+
+
+def _gather_gmax_mechnames(cell, mystrs: list):
+
+    mechnames_of_interest = []
+    for sec in cell.allsec:
+        for seg in sec:
+            for k in seg:
+                sublist = [f'{subk}_{str(k)}' for subk in k.__dict__.keys()
+                           for mystr in mystrs if mystr in subk]
+                if any(sublist):
+                    mechnames_of_interest.extend(sublist)
+    return list(set(mechnames_of_interest))
+
+
+def _print_Gmax_info(cell, mech_names=['gbar', 'gcalbar', 'gcanbar', 'gcatbar', 'ghdbar', 'gkabar', 'gkdbar', 'gkdrbar']):
+    myGs = []
+    maxgs = []
+    maxgsegs = []
+    mechnames = _gather_gmax_mechnames(
+        cell, mech_names)
+    for mechname in mechnames:
+        G, seglist, values = cell.calc_Gmax_mechvalue(mechname)
+        print(mechname)
+        print(
+            f'G: {G*1e3}uS, max g {max(values)} S/cm2 @ {seglist[np.argmax(values)]}, min g {min(values)} S/cm2\n')
+        myGs.append(G)
+        maxgs.append(max(values))
+        maxgsegs.append(seglist[np.argmax(values)])
+    print(f'max G: {mechnames[np.argmax(myGs)]} = {max(myGs)*1e3} uS')
+    print(
+        f'max g: {mechnames[np.argmax(maxgs)]} = {max(maxgs)} S/cm2 @ {maxgsegs[np.argmax(maxgs)]}')
+
+
 if __name__ == '__main__':
     if os.path.exists("./Model/Mods/x86_64/libnrnmech.so"):
         # linux compiled file (on hpc)
@@ -857,13 +908,16 @@ if __name__ == '__main__':
     dt = 0.025  # ms
 
     hShape_flag = False
-    cell = locals()[NeuronTemplates[4]](replace_axon=True)
+    cell = locals()[NeuronTemplates[0]](replace_axon=False)
     cell.insertOptogenetics(cell.alldend)
 
     if not hShape_flag:
         h.define_shape()
         hShape_flag = True
 
+    _print_area(cell, ['allsec', 'soma', 'alldend', 'axon',
+                'apicalTrunk_ext', 'apicalTuft', 'basaldend', 'apical_obliques'])
+    _print_Gmax_info(cell)
     # Gather sec positions before movement
     secpos = cell.gather_secpos()
     # by default included
