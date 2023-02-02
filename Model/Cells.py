@@ -100,7 +100,7 @@ class NeuronTemplate:
                 h.pt3dchange(i, xyz[0], xyz[1], xyz[2],
                              section.diam3d(i), sec=section)
 
-    def allign_cell_toaxis(self, axis='x'):
+    def allign_cell_toaxis(self, axis='x', exclude_axon=True):
         '''
         Allign cell to axis = x,y or z
         For generallity -> extract principal component of a cell. For pyramidal cell this is probably the axo-somato-dendritic-axis.
@@ -108,6 +108,8 @@ class NeuronTemplate:
         '''
         # determine principal component axis assuming this is the axo-somato-dendritic axis
         secpos = self.gather_secpos()
+        if exclude_axon:
+            secpos = secpos.loc[~secpos.index.str.contains('axon')]
         #secpos = secpos-secpos.mean()
         cov_mat = secpos.cov()
         eig_values, eig_vectors = np.linalg.eig(cov_mat)
@@ -920,9 +922,11 @@ if __name__ == '__main__':
     _print_Gmax_info(cell)
     # Gather sec positions before movement
     secpos = cell.gather_secpos()
+    print(max(secpos['x'])-min(secpos['x']))
+    print(max(secpos['x'])/min(secpos['x']))
     # by default included
-    cell.move_Cell(-secpos.loc[['soma[0]']].to_numpy()[0])
-    cell.rotate_Cell(theta=np.pi/180*30)
+    cell.rotate_Cell(theta=0)
+    cell.move_Cell([-1000, 0, -700])
 
     # gather new sec positions
     secpos2 = cell.gather_secpos()
