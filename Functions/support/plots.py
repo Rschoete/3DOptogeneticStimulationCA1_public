@@ -30,7 +30,7 @@ def shapePlot(h, cell, shapeplotsinfo, axsettings, save_flag, figdir='.', extens
             ax.set_title(
                 f"{cell.templatename} / {cell.morphology} / {cell.celltype}")
             if save_flag:
-                savename = f"{figdir}/shapeplot_{pi['cvals_type']}.{extension}"
+                savename = f"{figdir}/shapeplot_{pi['cvals_type']}{extension}"
                 fig.savefig(savename)
 
 
