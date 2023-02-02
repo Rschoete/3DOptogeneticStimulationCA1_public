@@ -1,15 +1,24 @@
-import sys
-import os
 import json
+import os
+import sys
+
 if __name__ == '__main__':
 
-    from simulation import *
     import Functions.setup as stp
+    from simulation import *
 
     try:
-        filepath= sys.argv[1]
+        filepath = sys.argv[1]
+        if ',' in filepath:
+            fps = filepath.split(',')
+            filepath = fps[0]
+            for i, val in enumerate(fps):
+                try:
+                    sys.argv[1+i] = val
+                except IndexError:
+                    sys.argv.append(val)
     except:
-        filepath = 'test'
+        filepath = 'Inputs\SDC20230125_constI\inputCA1_PC_cAC_sig5_all_0.json'
     print(filepath)
     if not filepath.endswith('.json'):
         filepath = filepath+'.json'
@@ -23,5 +32,12 @@ if __name__ == '__main__':
     with open(filepath) as f:
         myinput = json.load(f)
     print(myinput)
-    #data = stp.simParams(myinput)
-    gridFieldStimulation(myinput)
+    data = stp.simParams(myinput)
+    if len(sys.argv) > 3 and len(sys.argv) % 2 == 0:
+        import ast
+        gridFieldStimulation(
+            myinput, **{sys.argv[i+2]: ast.literal_eval(sys.argv[i+3]) for i in range(len(sys.argv)-2)[::2]})
+    elif len(sys.argv) % 2 == 1:
+        raise ValueError('nr of input arguments should be odd')
+    else:
+        fieldStimulation(data)

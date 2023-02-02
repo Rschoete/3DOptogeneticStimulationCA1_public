@@ -28,7 +28,7 @@ begintemplate bACnoljp7
   public all, somatic, apical, axonal, basal, myelinated, APC
   objref all, somatic, apical, axonal, basal, myelinated, APC
 
-proc init(/* args: morphology_dir, morphology_name */) {
+proc init(/* args: replace_axon_flag, morphology_dir, morphology_name */) {
   all = new SectionList()
   apical = new SectionList()
   axonal = new SectionList()

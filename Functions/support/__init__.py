@@ -1,4 +1,4 @@
-from .wrapper import AnalysesWrapper
+from .plots import setup_recordAPs, setup_recordTraces
 from .save import SaveResults
 from .utils import *
-from .plots import setup_recordAPs, setup_recordTraces
+from .wrapper import AnalysesWrapper
