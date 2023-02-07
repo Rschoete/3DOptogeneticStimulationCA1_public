@@ -487,6 +487,280 @@ def _main_fixed_field_different_setups():
     df.to_csv(runlist_filenameoptall+'.csv', index=False)
 
 
+def _main_EET_multicells_allparams_xposssplit():
+    now = datetime.now()
+    dt_string = now.strftime("%Y%m%d")
+    folder = './Inputs/SDC%s_Ugent470inVivoGray_multiCells_singlePulse_EET_xposssplit/' % dt_string
+    os.makedirs(folder, exist_ok=True)
+    runlist_filenameoptall = folder+'runlistopt'
+
+    OAT_samples_EET = pd.read_csv(
+        './Inputs/samples_EET_multicell_in_opticalField.csv')
+    inputsoptall = []
+    pds = np.logspace(0, 2, 5)
+    pitches = [-np.pi/2, 0, np.pi/2]
+    ztrans = [-700, -1000, -400]
+    xtrans = [0, -700, 0]
+    xposs_list = []
+    yposs_list = []
+    zposs_list = []
+
+    xposs_radial = list(np.linspace(0, 2500, 11, endpoint=True))
+    xposs_x = list(np.linspace(0, 1100, 11, endpoint=True))
+    zposs_radial = list(np.linspace(0, 1100, 11, endpoint=True))
+    zposs_x = list(np.linspace(0, 5000, 11, endpoint=True))
+
+    for i in range(len(OAT_samples_EET)):
+        sublist = []
+        xposs_sublist = []
+        yposs_sublist = []
+        zposs_sublist = []
+
+        cell = OAT_samples_EET['cell'].iloc[i]
+        mua = OAT_samples_EET['mua'].iloc[i]
+        mus = OAT_samples_EET['mus'].iloc[i]
+        g = OAT_samples_EET['g'].iloc[i]
+        Gmax = OAT_samples_EET['Gmax'].iloc[i]
+        opsinloc = OAT_samples_EET['loc'].iloc[i]
+        roll = OAT_samples_EET['roll'].iloc[i]
+        pitch = OAT_samples_EET['pitch'].iloc[i]
+        sim_idx = OAT_samples_EET['sim_idx'].iloc[i]
+        iter = sim_idx
+
+        filenameopt = folder + \
+            f'input_{sim_idx}.json'
+
+        input = stp.simParams({'test_flag': False, 'save_data_flag': False,
+                               'save_input_flag': False, 'save_flag': False, 'plot_flag': False})
+
+        input.resultsFolder = '/SDC_Ugent470_gray_invivo_multicell_EET/' + \
+            f'EETsimulation_{sim_idx}'
+        input.subfolderSuffix = ''
+
+        input.duration = 100
+        input.v0 = -70
+
+        input.stimopt.stim_type = ['Optogxstim']
+        input.simulationType = ['SD_Optogenx']
+
+        input.cellsopt.neurontemplate = cell
+
+        input.cellsopt.opsin_options.opsinlocations = opsinloc
+        input.cellsopt.opsin_options.Gmax_total = Gmax  # uS
+        input.cellsopt.opsin_options.distribution = f'distribution = lambda x: {1}'
+        # allign axo-somato-dendritic axis with z-axis
+        input.cellsopt.init_options.theta = pitch
+        input.cellsopt.init_options.psi = roll
+        input.cellsopt.init_options.replace_axon = False
+        input.cellsopt.cellTrans_options.move_flag = True
+        input.cellsopt.cellTrans_options.rt = [xt, 0, zt]
+
+        input.stimopt.Ostimparams.filepath = './Inputs/LightIntensityProfile/Ugent470nIrr_np1e7_res5emin3_gf1_cyl_5x10.txt'
+        input.stimopt.Ostimparams.amp = 1/3*10**5
+        input.stimopt.Ostimparams.delay = 100
+        input.stimopt.Ostimparams.pulseType = 'singleSquarePulse'
+        input.stimopt.Ostimparams.dur = 100
+        input.stimopt.Ostimparams.options = {
+            'prf': 100, 'dc': 1, 'xT': [0, 0, 0]}
+
+        input.analysesopt.SDOptogenx.options['simdur'] = 500
+        input.analysesopt.SDOptogenx.options['delay'] = 100
+        input.analysesopt.SDOptogenx.options['vinit'] = -70
+        input.analysesopt.SDOptogenx.options['n_iters'] = 7
+        input.analysesopt.SDOptogenx.options['verbose'] = False
+        input.analysesopt.SDOptogenx.startamp = 1000
+        input.analysesopt.SDOptogenx.durs = pds
+        input.analysesopt.SDOptogenx.nr_pulseOI = 1
+        input.analysesopt.SDOptogenx.record_iOptogenx = 'chr2h134r'
+
+        input.analysesopt.recordSuccesRatio = False
+        input.analysesopt.sec_plot_flag = False
+        input.analysesopt.save_traces = False
+
+        with open(filenameopt, 'w') as file:
+            json.dump(input.todict(False), file,
+                      indent=4, cls=MyEncoder)
+
+        if pitch == 0:
+            xposs = xposs_x
+            zposs = zposs_x
+        else:
+            xposs = xposs_radial
+            zposs = zposs_radial
+        yposs = [0]
+        for xp in xposs:
+            inputsoptall.append(filenameopt)
+            sublist.append(filenameopt)
+            xposs_sublist.append([xp])
+            yposs_sublist.append(yposs)
+            zposs_sublist.append(zposs)
+
+        df = pd.DataFrame({'inputfilename': sublist, 'xposs': xposs_sublist,
+                           'yposs': yposs_sublist, 'zposs': zposs_sublist})
+        df.to_csv(folder+'sublist'+cell+opsinloc+'.csv', index=False)
+        xposs_list.extend(xposs_sublist)
+        yposs_list.extend(yposs_sublist)
+        zposs_list.extend(zposs_sublist)
+
+    with open(runlist_filenameoptall+'.txt', 'w') as file:
+        for item in inputsoptall:
+            file.write("%s\n" % item)
+
+    df = pd.DataFrame({'inputfilename': inputsoptall,
+                      'xposs': xposs_list, 'yposs': yposs_list, 'zposs': zposs_list})
+    df.to_csv(runlist_filenameoptall+'.csv', index=False)
+
+
+def _main_EET_multicells_allparams_pitchcelltypesplit_xposssplit():
+
+    celltemplates_pyrs = Cells.NeuronTemplates[:2]
+    opsinlocs_pyrs = ['all', 'soma', 'basal', 'axon']
+    celltemplates_ints = Cells.NeuronTemplates[4:6]
+    opsinlocs_ints = ['all', 'soma', 'axon']
+
+    now = datetime.now()
+    dt_string = now.strftime("%Y%m%d")
+    folder = './Inputs/SDC%s_Ugent470inVivoGray_multiCells_singlePulse_celltypepitchsplit_EET_xposssplit/' % dt_string
+    os.makedirs(folder, exist_ok=True)
+    runlist_filenameoptall = folder+'runlistopt'
+
+    OAT_samples_EET = pd.read_csv(
+        './Inputs/samples_EET_multicell_in_opticalField_pitchcelltypesplit.csv')
+    inputsoptall = []
+    pds = np.logspace(0, 2, 5)
+    pitches = [-np.pi/2, 0, np.pi/2]
+    ztrans = [-700, -1000, -400]
+    xtrans = [0, -700, 0]
+    xposs_list = []
+    yposs_list = []
+    zposs_list = []
+
+    xposs_radial = list(np.linspace(0, 2500, 11, endpoint=True))
+    xposs_x = list(np.linspace(0, 1100, 11, endpoint=True))
+    zposs_radial = list(np.linspace(0, 1100, 11, endpoint=True))
+    zposs_x = list(np.linspace(0, 5000, 11, endpoint=True))
+    for celltype in ['pyr', 'int']:
+        sublist = []
+        xposs_sublist = []
+        yposs_sublist = []
+        zposs_sublist = []
+        if celltype == 'pyr':
+            celltemplates = celltemplates_pyrs
+            opsinlocs = opsinlocs_pyrs
+        elif celltype == 'int':
+            celltemplates = celltemplates_ints
+            opsinlocs = opsinlocs_ints
+
+        for pitch, xt, zt in zip(pitches, xtrans, ztrans):
+            for i in range(len(OAT_samples_EET)):
+
+                cell = OAT_samples_EET['cell'].iloc[i]
+                mua = OAT_samples_EET['mua'].iloc[i]
+                mus = OAT_samples_EET['mus'].iloc[i]
+                g = OAT_samples_EET['g'].iloc[i]
+                redus = mus*(1-g)
+                Gmax = OAT_samples_EET['Gmax'].iloc[i]
+                opsinloc = OAT_samples_EET['loc'].iloc[i]
+                if celltype == 'pyr':
+                    opsinloc = int(np.floor(opsinloc/3))
+                elif celltype == 'int':
+                    opsinloc = int(np.floor(opsinloc/4))
+                roll = OAT_samples_EET['roll'].iloc[i]-np.pi
+                sim_idx = OAT_samples_EET['sim_idx'].iloc[i]
+                # map sim_idx to idx optical field
+                ofield_idx = 3*np.floor(sim_idx/7).astype(int)
+                if sim_idx % 7 == 1:
+                    ofield_idx += 1
+                if sim_idx % 7 == 2:
+                    ofield_idx += 2
+                opticfield_filepath = f'./Inputs/LightIntensityProfile/Ugent470grayinvivo_EET/ugent470_gray_invivo_mua{mua:0.4f}_redmus{redus:0.4f}_{ofield_idx}.txt'
+                opsinloc = opsinlocs[opsinloc]
+                cell = celltemplates[int(cell)]
+
+                filenameopt = folder + \
+                    f'input{celltype}_pitch{pitch/np.pi:0.1f}_{sim_idx}.json'
+
+                input = stp.simParams({'test_flag': False, 'save_data_flag': False,
+                                       'save_input_flag': False, 'save_flag': False, 'plot_flag': False})
+
+                input.resultsFolder = '/SDC_Ugent470_gray_invivo_multicell_pitchcelltypesplit_EET/' + \
+                    f'EETsimulation{celltype}_pitch{pitch/np.pi:0.1f}_{sim_idx}'
+                input.subfolderSuffix = ''
+
+                input.duration = 100
+                input.v0 = -70
+
+                input.stimopt.stim_type = ['Optogxstim']
+                input.simulationType = ['SD_Optogenx']
+
+                input.cellsopt.neurontemplate = cell
+
+                input.cellsopt.opsin_options.opsinlocations = opsinloc
+                input.cellsopt.opsin_options.Gmax_total = Gmax  # uS
+                input.cellsopt.opsin_options.distribution = f'distribution = lambda x: {1}'
+                # allign axo-somato-dendritic axis with z-axis
+                input.cellsopt.init_options.theta = pitch
+                input.cellsopt.init_options.psi = roll
+                input.cellsopt.init_options.replace_axon = False
+                input.cellsopt.cellTrans_options.move_flag = True
+                input.cellsopt.cellTrans_options.rt = [xt, 0, zt]
+
+                input.stimopt.Ostimparams.filepath = opticfield_filepath
+                input.stimopt.Ostimparams.amp = 1/3*10**5
+                input.stimopt.Ostimparams.delay = 100
+                input.stimopt.Ostimparams.pulseType = 'singleSquarePulse'
+                input.stimopt.Ostimparams.dur = 100
+                input.stimopt.Ostimparams.options = {
+                    'prf': 100, 'dc': 1, 'xT': [0, 0, 0]}
+
+                input.analysesopt.SDOptogenx.options['simdur'] = 500
+                input.analysesopt.SDOptogenx.options['delay'] = 100
+                input.analysesopt.SDOptogenx.options['vinit'] = -70
+                input.analysesopt.SDOptogenx.options['n_iters'] = 7
+                input.analysesopt.SDOptogenx.options['verbose'] = False
+                input.analysesopt.SDOptogenx.startamp = 1000
+                input.analysesopt.SDOptogenx.durs = pds
+                input.analysesopt.SDOptogenx.nr_pulseOI = 1
+                input.analysesopt.SDOptogenx.record_iOptogenx = 'chr2h134r'
+
+                input.analysesopt.recordSuccesRatio = False
+                input.analysesopt.sec_plot_flag = False
+                input.analysesopt.save_traces = False
+
+                with open(filenameopt, 'w') as file:
+                    json.dump(input.todict(False), file,
+                              indent=4, cls=MyEncoder)
+
+                if pitch == 0:
+                    xposs = xposs_x
+                    zposs = zposs_x
+                else:
+                    xposs = xposs_radial
+                    zposs = zposs_radial
+                yposs = [0]
+                for xp in xposs:
+                    inputsoptall.append(filenameopt)
+                    sublist.append(filenameopt)
+                    xposs_sublist.append([xp])
+                    yposs_sublist.append(yposs)
+                    zposs_sublist.append(zposs)
+
+        df = pd.DataFrame({'inputfilename': sublist, 'xposs': xposs_sublist,
+                           'yposs': yposs_sublist, 'zposs': zposs_sublist})
+        df.to_csv(folder+'sublist'+celltype+'.csv', index=False)
+        xposs_list.extend(xposs_sublist)
+        yposs_list.extend(yposs_sublist)
+        zposs_list.extend(zposs_sublist)
+
+    with open(runlist_filenameoptall+'.txt', 'w') as file:
+        for item in inputsoptall:
+            file.write("%s\n" % item)
+
+    df = pd.DataFrame({'inputfilename': inputsoptall,
+                      'xposs': xposs_list, 'yposs': yposs_list, 'zposs': zposs_list})
+    df.to_csv(runlist_filenameoptall+'.csv', index=False)
+
+
 if __name__ == '__main__':
-    _main_fixed_field_different_setups_xposssplit()
+    _main_EET_multicells_allparams_pitchcelltypesplit_xposssplit()
     print('finish')
