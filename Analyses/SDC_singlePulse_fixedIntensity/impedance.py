@@ -4,6 +4,7 @@ import sys
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from neuron import h
 
 import Functions.globalFunctions.morphology_v2 as mphv2
@@ -26,7 +27,36 @@ def det_impedance(pos, sec, v0, freqs, dur):
     return imps
 
 
+def _calc_imp(cell):
+    # by default included
+    all_imps = {}
+    idx = -1
+    freqs = [0, 1, 10, 100]
+    durinit = 100
+    v0 = -70
+    for sec in cell.allsec:
+        print(f"{cell.allsec.index(sec)}/{len(cell.allsec)}")
+        for seg in sec:
+
+            imps = det_impedance(
+                seg.x, sec, v0, freqs, durinit)
+            for imp, f in zip(imps, freqs):
+                idx += 1
+                all_imps[idx] = {'imp': imp, 'f': f, 'v0': v0,
+                                 'durinit': durinit, 'neurontemplate': neurontemplate, 'seg': str(seg).split('.', 1)[-1]}
+
+    imp_df = pd.DataFrame.from_dict(all_imps, orient='index')
+    imp_df = imp_df.reset_index(drop=True)
+    imp_df.to_csv(f'impedance_{neurontemplate}.csv')
+    plt.figure()
+    plt.imshow(np.array(all_imps))
+    plt.colorbar()
+
+    plt.show()
+
+
 if __name__ == '__main__':
+    calc_impedance_flag = 0
     mpl.use('tkagg')
     plt.rcParams["font.family"] = "helvetica"
 
@@ -63,28 +93,6 @@ if __name__ == '__main__':
     secpos = cell.gather_secpos()
     print(max(secpos['z'])-min(secpos['z']))
     print(max(secpos['z'])/min(secpos['z']))
-    # by default included
-    all_imps = {}
-    idx = -1
-    freqs = [0, 1, 10, 100]
-    durinit = 100
-    v0 = -70
-    for sec in cell.allsec:
-        print(f"{cell.allsec.index(sec)}/{len(cell.allsec)}")
-        for seg in sec:
-
-            imps = det_impedance(
-                seg.x, sec, v0, freqs, durinit)
-            for imp, f in zip(imps, freqs):
-                idx += 1
-                all_imps[idx] = {'imp': imp, 'f': f, 'v0': v0,
-                                 'durinit': durinit, 'neurontemplate': neurontemplate}
-    import pandas as pd
-    imp_df = pd.DataFrame.from_dict(all_imps, orient='index')
-    imp_df = imp_df.reset_index(drop=True)
-    imp_df.to_csv(f'impedance_{neurontemplate}.csv')
-    plt.figure()
-    plt.imshow(np.array(all_imps))
-    plt.colorbar()
-
+    # if calc_impedance_flag:
+    #     _calc_imp()
     plt.show()
