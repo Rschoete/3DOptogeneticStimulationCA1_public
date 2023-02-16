@@ -898,6 +898,7 @@ if __name__ == '__main__':
         print("succes load nrnmech.dll")
     import Functions.globalFunctions.ExtracellularField as eF
     mpluse('tkagg')
+    plt.rcParams["font.family"] = "helvetica"
 
     # stim settings
     delay = 100
@@ -926,7 +927,7 @@ if __name__ == '__main__':
     print(max(secpos['x'])/min(secpos['x']))
     # by default included
     cell.rotate_Cell(theta=0)
-    cell.move_Cell([-1000, 0, -700])
+    #cell.move_Cell([-1000, 0, -700])
 
     # gather new sec positions
     secpos2 = cell.gather_secpos()
@@ -948,6 +949,7 @@ if __name__ == '__main__':
     ax.set_xlim([-300, 300])
     ax.set_ylim([-200, 400])
     ax.view_init(elev=90, azim=-90)
+    ax.set_grid = 'off'
     plt.show(block=False)
 
     # create dummy field

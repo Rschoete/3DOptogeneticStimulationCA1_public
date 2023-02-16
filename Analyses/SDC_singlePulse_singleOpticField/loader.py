@@ -174,14 +174,18 @@ def create_vta_df(*, master_df, columns_vta_df, levels, sortkey, usettings_value
     for i, uset in enumerate(usettings_values):
         print(i, '/', len(usettings_values), end='\r')
         intm_df = master_df[master_df[sortkey] == uset].copy()
+        intm_df['TAC'] = -intm_df['ichr2']/intm_df['dur']
         theta = np.unique(np.round(intm_df['theta_0'], 2))
 
         data = np.array(
             (intm_df['x']+intm_df['x_0'], intm_df['z']+intm_df['z_0'], intm_df['amp'])).T/1000
+        data_TAC = np.array(
+            (intm_df['x']+intm_df['x_0'], intm_df['z']+intm_df['z_0'], intm_df['TAC']*1000)).T/1000
         uX = np.unique(data[:, 0])
         uZ = np.unique(data[:, 1])
         # if ninterp, data_toplot[-1] is in 'ij' order
         data = EcF.prepareDataforInterp(data, 'ninterp', sorted=False)
+        data_TAC = EcF.prepareDataforInterp(data_TAC, 'ninterp', sorted=False)
         xX, zZ = np.meshgrid(uX, uZ, indexing='ij')
 
         if sum(np.isnan(data[-1].ravel()))/len(data[-1].ravel()) < nan_tolerance_percentage:
@@ -190,28 +194,28 @@ def create_vta_df(*, master_df, columns_vta_df, levels, sortkey, usettings_value
                     xX, zZ, data[-1], intensity=levels, gridorder='ij')
                 surf_low, surf_up = SURFVTA2D_count(
                     xX, zZ, data[-1], intensity=levels, gridorder='ij')
-                best_optrode_pos, * \
-                    _ = best_optrode_position_axialsym(
-                        xX, zZ, data[-1], intensity=levels, gridorder='ij')
+                best_optrode_pos, best_optrode_pos_TAC, worst_optrode_pos_TAC, *_ = best_optrode_position_axialsym(
+                    xX, zZ, data[-1], data_TAC[-1], intensity=levels, gridorder='ij')
             else:
                 vta_low = np.full(levels.shape, np.nan)
                 vta_up = np.full(levels.shape, np.nan)
                 surf_low, surf_up = SURFVTA2D_count(
                     xX, zZ, data[-1], intensity=levels, gridorder='ij')
-                best_optrode_pos, * \
-                    _ = best_optrode_position_xdir(
-                        xX, zZ, data[-1], intensity=levels, gridorder='ij')
+                best_optrode_pos, best_optrode_pos_TAC, worst_optrode_pos_TAC, *_ = best_optrode_position_xdir(
+                    xX, zZ, data[-1], data_TAC[-1], intensity=levels, gridorder='ij')
         else:
             vta_low = np.full(levels.shape, np.nan)
             vta_up = np.full(levels.shape, np.nan)
             surf_low = np.full(levels.shape, np.nan)
             surf_up = np.full(levels.shape, np.nan)
             best_optrode_pos = np.full(levels.shape, np.nan)
+            best_optrode_pos_TAC = np.full(levels.shape, np.nan)
+            worst_optrode_pos_TAC = np.full(levels.shape, np.nan)
 
         intm_df = intm_df.drop(
-            ['x', 'y', 'z', 'amp', 'ichr2', 'gchr2', 'sR'], axis=1)
+            ['x', 'y', 'z', 'amp', 'ichr2', 'gchr2', 'sR', 'TAC'], axis=1)
         intm_df = intm_df.iloc[0:1]
-        for vta_low_i, vta_up_i, surf_low_i, surf_up_i, op_pos_i, level_i in zip(vta_low, vta_up, surf_low, surf_up, best_optrode_pos, levels):
+        for vta_low_i, vta_up_i, surf_low_i, surf_up_i, op_pos_i, op_pos_i_TAC, wop_pos_i_TAC, level_i in zip(vta_low, vta_up, surf_low, surf_up, best_optrode_pos, best_optrode_pos_TAC, worst_optrode_pos_TAC, levels):
             idx += 1
             intm_df['vta_low'] = vta_low_i
             intm_df['vta_up'] = vta_up_i
@@ -219,6 +223,8 @@ def create_vta_df(*, master_df, columns_vta_df, levels, sortkey, usettings_value
             intm_df['surf_up'] = surf_up_i
             intm_df['level'] = level_i
             intm_df['b_opt_pos'] = op_pos_i
+            intm_df['b_opt_pos_TAC'] = op_pos_i_TAC
+            intm_df['w_opt_pos_TAC'] = wop_pos_i_TAC
             vta_dict[idx] = intm_df.to_dict(orient='list')
             for k, v in vta_dict[idx].items():
                 vta_dict[idx][k] = v[0]
@@ -275,10 +281,12 @@ if __name__ == '__main__':
                     settings_options, *opsin_options, *field_options]
     master_df['settings_str'] = master_df.apply(
         lambda x: '_'.join([str(x[key]) for key in setting_keys]), axis=1)
-    columns_vta_df = ['vta_low', 'vta_up', 'surf_low', 'surf_up', 'b_opt_pos', 'dur', 'level', *opsin_options,
+    columns_vta_df = ['vta_low', 'vta_up', 'surf_low', 'surf_up', 'b_opt_pos', 'b_opt_pos_TAC', 'w_opt_pos_TAC', 'dur', 'level', *opsin_options,
                       *field_options, *cell_init_options, *settings_options, ]
     levels = np.logspace(-1, 3, 9)
     usettings_str = list(master_df['settings_str'].unique())
-    savepath = os.path.join(filepath, f'vta_logspace(-1,3,5).csv')
+    savepath = os.path.join(filepath, f'vta_logspace(-1,3,9).csv')
+    # divide by zero is oke -> returns nan and is accounted for -> turn off warning
+    np.seterr(divide='ignore', invalid='ignore')
     create_vta_df(master_df=master_df, columns_vta_df=columns_vta_df, levels=levels, sortkey='settings_str',
                   usettings_values=usettings_str, nan_tolerance_percentage=0.95, save_flag=True, savepath=savepath)

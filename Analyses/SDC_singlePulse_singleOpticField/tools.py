@@ -154,28 +154,33 @@ def VTA2D_from_contour_axialsym(rR, zZ, Data, *, grid_order: Literal['xy', 'ij']
     return vta
 
 
-def best_optrode_position_axialsym(xX: np.ndarray, zZ: np.ndarray, data: np.ndarray, *, intensity: list, gridorder: str):
+def best_optrode_position_axialsym(xX: np.ndarray, zZ: np.ndarray, data: np.ndarray, data_TAC: np.ndarray, *, intensity: list, gridorder: str):
     if gridorder == 'ij':
         # make meshgrid order xy
         #gridorder = 'ij'
         xX = xX.T
         zZ = zZ.T
         data = data.T
+        data_TAC = data_TAC.T
         #gridorder = 'xy'
     bestz = []
-    xX = xX-xX[:, 1]+1  # this is remove X=0 from xX
+    bestz_TAC = []
+    worstz_TAC = []
     for intens in intensity:
         mask = data <= intens
         if not np.any(mask.ravel()):
             bestz.append(np.nan)
+            bestz_TAC.append(np.nan)
+            worstz_TAC.append(np.nan)
             continue
+
         # find row of interest
-        xX_masked = xX*mask
-        dX = np.max(xX_masked, axis=1)-np.min(xX_masked, axis=1)
-        idx = np.where(dX == max(dX))[0]
-        if len(idx) > 0:
+        sumMask = np.sum(mask, axis=1)
+        idx = np.where(sumMask == max(sumMask))[0]
+        if len(idx) > 1:
             data_masked = data*mask
             data_masked = data_masked[idx, :]
+            data_masked[np.isnan(data_masked)] = 0
 
             data_sums = []
             for i in range(data_masked.shape[0]):
@@ -183,40 +188,60 @@ def best_optrode_position_axialsym(xX: np.ndarray, zZ: np.ndarray, data: np.ndar
                 data_sums.append(
                     (data_masked[i, idx_data[0]]+data_masked[i, idx_data[-1]]))
 
-            idx2 = np.argmin(data_sums)
+            idx2 = np.nanargmin(data_sums)
             #idx2 = np.argmin(np.sum(data_masked,axis=0))
             bestz.append(zZ[idx[idx2], 0])
 
+            # best z TAC
+            data_TAC_masked = data_TAC*mask
+            data_TAC_masked = data_TAC_masked[idx, :]
+            data_TAC_masked[np.isnan(data_TAC_masked)] = 0
+            data_TAC_avg = np.sum(data_TAC_masked, axis=1) / \
+                np.sum(mask[idx, :], axis=1)
+            idx_TAC_min = np.nanargmin(data_TAC_avg)
+            idx_TAC_max = np.nanargmax(data_TAC_avg)
+            bestz_TAC.append(zZ[idx[idx_TAC_min], 0])
+            worstz_TAC.append(zZ[idx[idx_TAC_max], 0])
+
         else:
-            bestz.append(zZ[idx, 0])
+            bestz.append(zZ[idx[0], 0])
+            bestz_TAC.append(zZ[idx[0], 0])
+            worstz_TAC.append(zZ[np.argmax(np.max(data_TAC, axis=1)), 0])
+
     idx_min = np.argmin(data, axis=0)
     bestZ_perR = zZ[idx_min, 0]
     Imin = data[idx_min, np.arange(len(idx_min))]
-    return bestz, bestZ_perR, Imin
+    return bestz, bestz_TAC, worstz_TAC, bestZ_perR, Imin
 
 
-def best_optrode_position_xdir(xX: np.ndarray, zZ: np.ndarray, data: np.ndarray, *, intensity: list, gridorder: str):
+def best_optrode_position_xdir(xX: np.ndarray, zZ: np.ndarray, data: np.ndarray, data_TAC: np.ndarray, *, intensity: list, gridorder: str):
     if gridorder == 'ij':
         # make meshgrid order xy
         #gridorder = 'ij'
         xX = xX.T
         zZ = zZ.T
         data = data.T
+        data_TAC = data_TAC.T
         #gridorder = 'xy'
-        bestx = []
-        zZ = zZ-zZ[:1, :]+1  # this is remove Z=0 from zZ
+
+    bestx = []
+    bestx_TAC = []
+    worstx_TAC = []
     for intens in intensity:
         mask = data <= intens
         if not np.any(mask.ravel()):
             bestx.append(np.nan)
+            bestx_TAC.append(np.nan)
+            worstx_TAC.append(np.nan)
             continue
+
         # find row of interest
-        zZ_masked = zZ*mask
-        dZ = np.max(zZ_masked, axis=0)-np.min(zZ_masked, axis=0)
-        idx = np.where(dZ == max(dZ))[0]
-        if len(idx) > 0:
+        sumMask = np.sum(mask, axis=0)
+        idx = np.where(sumMask == max(sumMask))[0]
+        if len(idx) > 1:
             data_masked = data*mask
             data_masked = data_masked[:, idx]
+            data_masked[np.isnan(data_masked)] = 0
 
             data_sums = []
             for i in range(data_masked.shape[1]):
@@ -228,10 +253,23 @@ def best_optrode_position_xdir(xX: np.ndarray, zZ: np.ndarray, data: np.ndarray,
             #idx2 = np.argmin(np.sum(data_masked,axis=0))
             bestx.append(xX[0, idx[idx2]])
 
+            # best x TAC
+            data_TAC_masked = data_TAC*mask
+            data_TAC_masked = data_TAC_masked[:, idx]
+            data_TAC_masked[np.isnan(data_TAC_masked)] = 0
+            data_TAC_avg = np.sum(data_TAC_masked, axis=0) / \
+                np.sum(mask[:, idx], axis=0)
+            idx_TAC_min = np.nanargmin(data_TAC_avg)
+            idx_TAC_max = np.nanargmax(data_TAC_avg)
+            bestx_TAC.append(xX[0, idx[idx_TAC_min]])
+            worstx_TAC.append(xX[0, idx[idx_TAC_max]])
+
         else:
-            bestx.append(xX[0, idx])
+            bestx.append(xX[0, idx[0]])
+            bestx_TAC.append(xX[0, idx[0]])
+            worstx_TAC.append(xX[0, np.argmax(np.max(data_TAC, axis=0))])
 
     idx_min = np.argmin(data, axis=1)
     bestx_perz = xX[0, idx_min]
     Imin = data[np.arange(len(idx_min)), idx_min]
-    return bestx, bestx_perz, Imin
+    return bestx, bestx_TAC, worstx_TAC, bestx_perz, Imin
