@@ -56,7 +56,7 @@ class NeuronTemplate:
     * **kwargs not used: add so no error when transfering kwargs from child classes
     '''
 
-    def __init__(self, templatepath, templatename, replace_axon=True, morphologylocation='./Model/morphologies', ID=0, ty=0, col=0, phi=0, theta=0, psi=0, movesomatoorigin=True, **kwargs):
+    def __init__(self, templatepath, templatename, replace_axon=True, morphologylocation='./Model/morphologies', ID=0, ty=0, col=0, phi=0, theta=0, psi=0, movesomatoorigin=True, allign_axis=True, **kwargs):
         self.templatepath = templatepath
         self.templatename = templatename
         self.morphologylocation = morphologylocation
@@ -69,6 +69,7 @@ class NeuronTemplate:
         self.theta = theta
         self.psi = psi
         self.movesomatoorigin = movesomatoorigin
+        self.allign_axis = allign_axis
 
     def load_template(self):
         self.assign_MorphandCelltype()  # read morphology and add corresponding cell type
@@ -106,6 +107,13 @@ class NeuronTemplate:
         For generallity -> extract principal component of a cell. For pyramidal cell this is probably the axo-somato-dendritic-axis.
         Allign this axis with the chosen euler axis.
         '''
+        # !!! only call hSahpe once. Do not know why but if called twice and neuron has moved -> then translates some sections twice!!!
+        # h.Shape needs to be called to init 3d positions of sections
+        global hShape_flag
+        if not hShape_flag:
+            h.define_shape()
+            hShape_flag = True
+
         # determine principal component axis assuming this is the axo-somato-dendritic axis
         secpos = self.gather_secpos()
         if exclude_axon:
@@ -138,7 +146,7 @@ class NeuronTemplate:
         elif axis != 'x':
             raise ValueError('wrong axis value given. Should be x,y or z')
 
-    def rotate_Cell(self, phi=0, theta=0, psi=0, inverse=False, init_rotation=False, allign_axis=True):
+    def rotate_Cell(self, phi=0, theta=0, psi=0, inverse=False, init_rotation=False):
         '''
         rotate cell Tait-Bryan angles Rz(phi)*Ry(theta)*Rx(psi)*r
         phi = yawn, theta=pitch, psi = roll
@@ -147,13 +155,12 @@ class NeuronTemplate:
         inverse: -> do inverse rotation R = R.T
         phi, theta and psi are zero by default
         '''
+
         if init_rotation:
             phi = self.phi
             theta = self.theta
             psi = self.psi
-            if allign_axis:
-                # allign principal axis to x-axis. (principal axis is first principal component from 3D points)
-                self.allign_cell_toaxis()
+
         if phi != 0 or theta != 0 or psi != 0:
             for section in self.allsec:
                 for i in range(section.n3d()):
@@ -403,6 +410,9 @@ class CA1_PC_cAC_sig5(NeuronTemplate):
         self.move_attributes()
         self.make_lists()
         self.moveSomaToOrigin()
+        if self.allign_axis:
+            # allign principal axis to x-axis. (principal axis is first principal component from 3D points)
+            self.allign_cell_toaxis()
         self.rotate_Cell(init_rotation=True)
 
     def __str__(self):
@@ -459,6 +469,9 @@ class CA1_PC_cAC_sig6(NeuronTemplate):
         self.move_attributes()
         self.make_lists()
         self.moveSomaToOrigin()
+        if self.allign_axis:
+            # allign principal axis to x-axis. (principal axis is first principal component from 3D points)
+            self.allign_cell_toaxis()
         self.rotate_Cell(init_rotation=True)
 
     def __str__(self):
@@ -513,6 +526,9 @@ class bACnoljp8(NeuronTemplate):
         self.move_attributes()
         self.make_lists()
         self.moveSomaToOrigin()
+        if self.allign_axis:
+            # allign principal axis to x-axis. (principal axis is first principal component from 3D points)
+            self.allign_cell_toaxis()
         self.rotate_Cell(init_rotation=True)
 
     def __str__(self):
@@ -564,6 +580,9 @@ class cNACnoljp1(NeuronTemplate):
         self.move_attributes()
         self.make_lists()
         self.moveSomaToOrigin()
+        if self.allign_axis:
+            # allign principal axis to x-axis. (principal axis is first principal component from 3D points)
+            self.allign_cell_toaxis()
         self.rotate_Cell(init_rotation=True)
 
     def __str__(self):
@@ -615,6 +634,9 @@ class bACnoljp7(NeuronTemplate):
         self.move_attributes()
         self.make_lists()
         self.moveSomaToOrigin()
+        if self.allign_axis:
+            # allign principal axis to x-axis. (principal axis is first principal component from 3D points)
+            self.allign_cell_toaxis()
         self.rotate_Cell(init_rotation=True)
 
     def __str__(self):
@@ -666,6 +688,9 @@ class cNACnoljp2(NeuronTemplate):
         self.move_attributes()
         self.make_lists()
         self.moveSomaToOrigin()
+        if self.allign_axis:
+            # allign principal axis to x-axis. (principal axis is first principal component from 3D points)
+            self.allign_cell_toaxis()
         self.rotate_Cell(init_rotation=True)
 
     def __str__(self):
@@ -717,6 +742,9 @@ class INT_cAC_noljp4(NeuronTemplate):
         self.move_attributes()
         self.make_lists()
         self.moveSomaToOrigin()
+        if self.allign_axis:
+            # allign principal axis to x-axis. (principal axis is first principal component from 3D points)
+            self.allign_cell_toaxis()
         self.rotate_Cell(init_rotation=True)
 
     def __str__(self):
@@ -768,6 +796,9 @@ class INT_cAC_noljp3(NeuronTemplate):
         self.move_attributes()
         self.make_lists()
         self.moveSomaToOrigin()
+        if self.allign_axis:
+            # allign principal axis to x-axis. (principal axis is first principal component from 3D points)
+            self.allign_cell_toaxis()
         self.rotate_Cell(init_rotation=True)
 
     def __str__(self):
