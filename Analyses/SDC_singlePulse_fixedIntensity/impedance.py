@@ -35,7 +35,7 @@ def _calc_imp(cell, sections=None, freqs=[0, 1, 10, 100], durinit=100, v0=-70, e
     if sections is None:
         sections = cell.allsec
     for sec in sections:
-        print(f"{cell.allsec.index(sec)}/{len(sections)}")
+        print(f"{cell.allsec.index(sec)}/{len(sections)}", end='\r')
         for seg in sec:
 
             imps = det_impedance(
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     NeuronTemplates = ['CA1_PC_cAC_sig5',
                        'CA1_PC_cAC_sig6', 'cNACnoljp1', 'cNACnoljp2']
 
-    neurontemplate = NeuronTemplates[0]
+    neurontemplate = NeuronTemplates[2]
     print(f'Loading cell: {neurontemplate}')
     cell = getattr(Cells, neurontemplate)(replace_axon=False)
     #cell2 = getattr(Cells, NeuronTemplates[1])(replace_axon=False)

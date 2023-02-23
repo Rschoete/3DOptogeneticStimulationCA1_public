@@ -174,13 +174,12 @@ def create_vta_df(*, master_df, columns_vta_df, levels, sortkey, usettings_value
     for i, uset in enumerate(usettings_values):
         print(i, '/', len(usettings_values), end='\r')
         intm_df = master_df[master_df[sortkey] == uset].copy()
-        intm_df['TAC'] = -intm_df['ichr2']/intm_df['dur']
         theta = np.unique(np.round(intm_df['theta_0'], 2))
 
         data = np.array(
-            (intm_df['x']+intm_df['x_0'], intm_df['z']+intm_df['z_0'], intm_df['amp'])).T/1000
+            (intm_df['x'], intm_df['z'], intm_df['amp'])).T
         data_TAC = np.array(
-            (intm_df['x']+intm_df['x_0'], intm_df['z']+intm_df['z_0'], intm_df['TAC']*1000)).T/1000
+            (intm_df['x'], intm_df['z'], intm_df['TAC'])).T
         uX = np.unique(data[:, 0])
         uZ = np.unique(data[:, 1])
         # if ninterp, data_toplot[-1] is in 'ij' order
@@ -189,20 +188,21 @@ def create_vta_df(*, master_df, columns_vta_df, levels, sortkey, usettings_value
         xX, zZ = np.meshgrid(uX, uZ, indexing='ij')
 
         if sum(np.isnan(data[-1].ravel()))/len(data[-1].ravel()) < nan_tolerance_percentage:
+
             if theta != 0:
                 vta_low, vta_up = VTA2D_count_axialsym(
                     xX, zZ, data[-1], intensity=levels, gridorder='ij')
                 surf_low, surf_up = SURFVTA2D_count(
-                    xX, zZ, data[-1], intensity=levels, gridorder='ij')
-                best_optrode_pos, best_optrode_pos_TAC, worst_optrode_pos_TAC, *_ = best_optrode_position_axialsym(
-                    xX, zZ, data[-1], data_TAC[-1], intensity=levels, gridorder='ij')
+                    xX, zZ, data[-1], intensity=levels, gridorder='ij', radial_data=True)
             else:
                 vta_low = np.full(levels.shape, np.nan)
                 vta_up = np.full(levels.shape, np.nan)
                 surf_low, surf_up = SURFVTA2D_count(
-                    xX, zZ, data[-1], intensity=levels, gridorder='ij')
-                best_optrode_pos, best_optrode_pos_TAC, worst_optrode_pos_TAC, *_ = best_optrode_position_xdir(
-                    xX, zZ, data[-1], data_TAC[-1], intensity=levels, gridorder='ij')
+                    xX, zZ, data[-1], intensity=levels, gridorder='ij', radial_data=False)
+
+            # only use zdir because data is reorganized so that direction of interest is in zdir
+            best_optrode_pos, best_optrode_pos_TAC, worst_optrode_pos_TAC, best_optrode_pos_TACamp, worst_optrode_pos_TACamp, *_ = best_optrode_position_zdir(
+                xX, zZ, data[-1], data_TAC[-1], intensity=levels, gridorder='ij')
         else:
             vta_low = np.full(levels.shape, np.nan)
             vta_up = np.full(levels.shape, np.nan)
@@ -211,11 +211,16 @@ def create_vta_df(*, master_df, columns_vta_df, levels, sortkey, usettings_value
             best_optrode_pos = np.full(levels.shape, np.nan)
             best_optrode_pos_TAC = np.full(levels.shape, np.nan)
             worst_optrode_pos_TAC = np.full(levels.shape, np.nan)
+            best_optrode_pos_TACamp = np.full(levels.shape, np.nan)
+            worst_optrode_pos_TACamp = np.full(levels.shape, np.nan)
 
         intm_df = intm_df.drop(
             ['x', 'y', 'z', 'amp', 'ichr2', 'gchr2', 'sR', 'TAC'], axis=1)
+        intm_df = intm_df.drop(
+            ['TAC_log10', 'Gmax_log10', 'dur_log10', 'amp_log10', 'phi', 'psi', 'nPulse'], axis=1)
+
         intm_df = intm_df.iloc[0:1]
-        for vta_low_i, vta_up_i, surf_low_i, surf_up_i, op_pos_i, op_pos_i_TAC, wop_pos_i_TAC, level_i in zip(vta_low, vta_up, surf_low, surf_up, best_optrode_pos, best_optrode_pos_TAC, worst_optrode_pos_TAC, levels):
+        for vta_low_i, vta_up_i, surf_low_i, surf_up_i, op_pos_i, op_pos_i_TAC, wop_pos_i_TAC, op_pos_i_TACamp, wop_pos_i_TACamp, level_i in zip(vta_low, vta_up, surf_low, surf_up, best_optrode_pos, best_optrode_pos_TAC, worst_optrode_pos_TAC, best_optrode_pos_TACamp, worst_optrode_pos_TACamp, levels):
             idx += 1
             intm_df['vta_low'] = vta_low_i
             intm_df['vta_up'] = vta_up_i
@@ -225,7 +230,10 @@ def create_vta_df(*, master_df, columns_vta_df, levels, sortkey, usettings_value
             intm_df['b_opt_pos'] = op_pos_i
             intm_df['b_opt_pos_TAC'] = op_pos_i_TAC
             intm_df['w_opt_pos_TAC'] = wop_pos_i_TAC
+            intm_df['b_opt_pos_TACamp'] = op_pos_i_TACamp
+            intm_df['w_opt_pos_TACamp'] = wop_pos_i_TACamp
             vta_dict[idx] = intm_df.to_dict(orient='list')
+            # unpack list
             for k, v in vta_dict[idx].items():
                 vta_dict[idx][k] = v[0]
             #vta_df = pd.concat([vta_df, intm_df])
@@ -246,14 +254,7 @@ def load_vta_df(filepath, filename, *, recollect, **create_vta_df_keys):
     return vta_df
 
 
-if __name__ == '__main__':
-    recollect = False
-    fill_missing_xyzpositions_flag = False
-
-    # Load data
-    filepath = './Results\SDC\SDC_singlePulse_Ugent470_gray_invivo_multicell'
-    filename = 'all_data.csv'
-
+def _collect_masterdf(filepath, filename, recollect, fill_missing_xyzpositions_flag):
     # list parameters of interest
     cell_init_options = ['phi_0', 'theta_0', 'psi_0',
                          'neurontemplate', 'x_0', 'y_0', 'z_0']
@@ -272,21 +273,93 @@ if __name__ == '__main__':
     if fill_missing_xyzpositions_flag:
         master_df = fill_missing_xyzpositions(master_df, cell_init_options=cell_init_options, settings_options=settings_options,
                                               opsin_options=opsin_options, field_options=field_options, save_flag=True)
+    return master_df
 
-    unique_values_columns = {
+
+def _calc_vta(filepath, filename, savepath):
+    master_df = pd.read_csv(os.path.join(filepath, filename), index_col=0)
+    drop_columns = ['opsinmech', 'distribution', 'distribution_method',
+                    'phi_0', 'psi_0', 'seed', 'celsius', 'dt', 'field', 'settings_str']
+    master_df = master_df.drop(drop_columns, axis=1)
+
+    # preprocess master_df
+    master_df['amp'] = master_df['amp']/1000  # convert W/m2 -> mW/mm2
+    for x in ['x', 'y', 'z']:
+        for suffix in ['', '_0']:
+            master_df[x+suffix] = master_df[x+suffix]/1000  # convert um -> mm
+    master_df['TAC'] = -master_df['ichr2']/master_df['dur'] * \
+        1e-5  # convert to uA (ichr2: mA/cm2*um2)
+    master_df['Gmax'] = np.round(master_df['Gmax'], 4)
+    master_df['theta_0'] = np.round(master_df['theta_0'], 2)
+    for x in ['amp', 'Gmax', 'TAC', 'dur']:
+        master_df[x+'_log10'] = np.round(np.log10(master_df[x]), 4)
+    master_df['neurontemplate'] = master_df['neurontemplate'].replace(
+        {'CA1_PC_cAC_sig5': 'pyr_1', 'CA1_PC_cAC_sig6': 'pyr_2', 'cNACnoljp1': 'bc_1', 'cNACnoljp2': 'bc_2'})
+    all_columns = master_df.columns
+
+    # change perspective from optrode centered to stratum pyramidale centred
+    for theta in master_df['theta_0'].unique():
+        if theta < 0:
+            label = 'z'
+            master_df.loc[master_df['theta_0'] == theta, label] *= -1
+            master_df.loc[master_df['theta_0'] == theta, label+'_0'] *= -1
+        elif theta == 0:
+            label = 'x'
+            master_df.loc[master_df['theta_0'] == theta, label] *= -1
+            master_df.loc[master_df['theta_0'] == theta, label+'_0'] *= -1
+            toz = master_df.loc[master_df['theta_0'] == theta, 'x'].to_numpy()
+            tox = master_df.loc[master_df['theta_0'] == theta, 'z'].to_numpy()
+            toz_0 = master_df.loc[master_df['theta_0']
+                                  == theta, 'x_0'].to_numpy()
+            tox_0 = master_df.loc[master_df['theta_0']
+                                  == theta, 'z_0'].to_numpy()
+            master_df.loc[master_df['theta_0'] == theta, 'x'] = tox
+            master_df.loc[master_df['theta_0'] == theta, 'z'] = toz
+            master_df.loc[master_df['theta_0'] == theta, 'x_0'] = tox_0
+            master_df.loc[master_df['theta_0'] == theta, 'z_0'] = toz_0
+
+        master_df.loc[master_df['theta_0'] == theta, 'z'] = np.round(
+            master_df.loc[master_df['theta_0'] == theta, 'z']+master_df.loc[master_df['theta_0'] == theta, 'z_0'], 3)
+        master_df.loc[master_df['theta_0'] == theta, 'x'] = np.round(
+            master_df.loc[master_df['theta_0'] == theta, 'x']+master_df.loc[master_df['theta_0'] == theta, 'x_0'], 3)
+
+    unique_values_columns_master = {
         key: master_df[key].unique() for key in all_columns}
-    print(master_df.head())
+    for x in ['amp', 'Gmax', 'TAC', 'dur']:
+        unique_values_columns_master[x] = np.sort(
+            unique_values_columns_master[x])
+        unique_values_columns_master[x+'_log10'] = np.sort(
+            unique_values_columns_master[x+'_log10'])
+    for x in ['x', 'z', 'x_0', 'z_0']:
+        unique_values_columns_master[x] = np.sort(
+            unique_values_columns_master[x])
 
-    setting_keys = ['dur', *cell_init_options, *
-                    settings_options, *opsin_options, *field_options]
+    # create sort label
+    setting_keys = ['dur', 'theta_0', 'neurontemplate', 'x_0', 'y_0', 'z_0',
+                    'Gmax', 'opsinlocations']
     master_df['settings_str'] = master_df.apply(
         lambda x: '_'.join([str(x[key]) for key in setting_keys]), axis=1)
-    columns_vta_df = ['vta_low', 'vta_up', 'surf_low', 'surf_up', 'b_opt_pos', 'b_opt_pos_TAC', 'w_opt_pos_TAC', 'dur', 'level', *opsin_options,
-                      *field_options, *cell_init_options, *settings_options, ]
+
+    columns_vta_df = ['vta_low', 'vta_up', 'surf_low', 'surf_up', 'b_opt_pos', 'b_opt_pos_TAC', 'w_opt_pos_TAC', 'b_opt_pos_TACamp', 'w_opt_pos_TACamp', 'dur', 'level', 'theta_0', 'neurontemplate', 'x_0', 'y_0', 'z_0',
+                      'Gmax', 'opsinlocations']
     levels = np.logspace(-1, 3, 9)
     usettings_str = list(master_df['settings_str'].unique())
-    savepath = os.path.join(filepath, f'vta_logspace(-1,3,9).csv')
-    # divide by zero is oke -> returns nan and is accounted for -> turn off warning
     np.seterr(divide='ignore', invalid='ignore')
-    create_vta_df(master_df=master_df, columns_vta_df=columns_vta_df, levels=levels, sortkey='settings_str',
-                  usettings_values=usettings_str, nan_tolerance_percentage=0.95, save_flag=True, savepath=savepath)
+    vta_df = create_vta_df(master_df=master_df, columns_vta_df=columns_vta_df, levels=levels, sortkey='settings_str',
+                           usettings_values=usettings_str, nan_tolerance_percentage=0.95, save_flag=True, savepath=savepath)
+    return vta_df
+
+
+if __name__ == '__main__':
+    recollect = False
+    fill_missing_xyzpositions_flag = False
+
+    # Load data
+    filepath = './Results\SDC\SDC_singlePulse_Ugent470_gray_invivo_multicell'
+    filename = 'all_data_filled.csv'
+
+    savepath_vta = os.path.join(filepath, f'vta_logspace(-1,3,9)2.csv')
+    master_df = _collect_masterdf(
+        filepath, filename, recollect, fill_missing_xyzpositions_flag)
+    vta_df = _calc_vta(filepath=filepath, filename=filename,
+                       savepath=savepath_vta)

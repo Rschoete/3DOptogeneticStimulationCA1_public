@@ -76,8 +76,7 @@ def SURFVTA2D_count(xX: np.ndarray, zZ: np.ndarray, data: np.ndarray, *, intensi
     dZs[0, :] = dZ/2
     dZs[-1, :] = dZ/2
     dXs = np.ones((1, xX.shape[1]))*dX
-    dXs[:, 0] = dX/2
-    dXs[:, -1] = dX/2
+    dXs[:, 0] = 0
     surfs = dZs*dXs
 
     # create dilated volumes
@@ -85,8 +84,7 @@ def SURFVTA2D_count(xX: np.ndarray, zZ: np.ndarray, data: np.ndarray, *, intensi
     dZs[0, :] = dZ/2
     dZs[-1, :] = dZ/2
     dXs = np.ones((1, xX.shape[1]+2-1*radial_data))*dX
-    dXs[:, 0] = dX/2
-    dXs[:, -1] = dX/2
+    dXs[:, 0] = 0
     surfs_dilated = dZs*dXs
 
     surf_lower = []
@@ -96,13 +94,19 @@ def SURFVTA2D_count(xX: np.ndarray, zZ: np.ndarray, data: np.ndarray, *, intensi
         mask_dilated = np.zeros(
             (mask.shape[0]+2, mask.shape[1]+2-1*radial_data))
         idx = np.where(mask)
-        mask_dilated[idx[0]+1, idx[1]+1] = 1
+        mask_dilated[idx[0]+1, idx[1]+1-radial_data] = 1
         mask_dilated = binary_dilation(mask_dilated)
+        # for lower bound only retain columns if two occurances in a row (this way calculate same when not radial als when radial data)
+        mask = mask*(np.cumsum(mask, axis=1) > 1)
+        mask_dilated = mask_dilated*(np.cumsum(mask_dilated, axis=1) > 1)
+        # if not radial_data:
+        #     mask_dilated = mask_dilated * \
+        #         (np.fliplr(np.cumsum(np.fliplr(mask_dilated), axis=1) > 1))
 
         surfs_masked = surfs[mask]
-        surf_lower.append(sum(surfs_masked))
+        surf_lower.append(sum(surfs_masked)*(1+radial_data))
         surfs_masked_dilated = surfs_dilated[mask_dilated]
-        surf_upper.append(sum(surfs_masked_dilated))
+        surf_upper.append(sum(surfs_masked_dilated)*(1+radial_data))
     return surf_lower, surf_upper
 
 
@@ -154,7 +158,7 @@ def VTA2D_from_contour_axialsym(rR, zZ, Data, *, grid_order: Literal['xy', 'ij']
     return vta
 
 
-def best_optrode_position_axialsym(xX: np.ndarray, zZ: np.ndarray, data: np.ndarray, data_TAC: np.ndarray, *, intensity: list, gridorder: str):
+def best_optrode_position_zdir(xX: np.ndarray, zZ: np.ndarray, data: np.ndarray, data_TAC: np.ndarray, *, intensity: list, gridorder: str):
     if gridorder == 'ij':
         # make meshgrid order xy
         #gridorder = 'ij'
@@ -166,12 +170,16 @@ def best_optrode_position_axialsym(xX: np.ndarray, zZ: np.ndarray, data: np.ndar
     bestz = []
     bestz_TAC = []
     worstz_TAC = []
+    bestz_TACamp = []
+    worstz_TACamp = []
     for intens in intensity:
         mask = data <= intens
         if not np.any(mask.ravel()):
             bestz.append(np.nan)
             bestz_TAC.append(np.nan)
             worstz_TAC.append(np.nan)
+            bestz_TACamp.append(np.nan)
+            worstz_TACamp.append(np.nan)
             continue
 
         # find row of interest
@@ -203,15 +211,24 @@ def best_optrode_position_axialsym(xX: np.ndarray, zZ: np.ndarray, data: np.ndar
             bestz_TAC.append(zZ[idx[idx_TAC_min], 0])
             worstz_TAC.append(zZ[idx[idx_TAC_max], 0])
 
+            data_TACamp_avg = np.nansum(data_TAC_masked/data_masked, axis=1) / \
+                np.sum(mask[idx, :], axis=1)
+            idx_TACamp_min = np.nanargmin(data_TACamp_avg)
+            idx_TACamp_max = np.nanargmax(data_TACamp_avg)
+            bestz_TACamp.append(zZ[idx[idx_TACamp_min], 0])
+            worstz_TACamp.append(zZ[idx[idx_TACamp_max], 0])
+
         else:
             bestz.append(zZ[idx[0], 0])
             bestz_TAC.append(zZ[idx[0], 0])
             worstz_TAC.append(zZ[np.argmax(np.max(data_TAC, axis=1)), 0])
+            bestz_TACamp.append(zZ[idx[0], 0])
+            worstz_TACamp.append(zZ[np.argmax(np.max(data_TAC, axis=1)), 0])
 
     idx_min = np.argmin(data, axis=0)
     bestZ_perR = zZ[idx_min, 0]
     Imin = data[idx_min, np.arange(len(idx_min))]
-    return bestz, bestz_TAC, worstz_TAC, bestZ_perR, Imin
+    return bestz, bestz_TAC, worstz_TAC, bestz_TACamp, worstz_TACamp, bestZ_perR, Imin
 
 
 def best_optrode_position_xdir(xX: np.ndarray, zZ: np.ndarray, data: np.ndarray, data_TAC: np.ndarray, *, intensity: list, gridorder: str):
