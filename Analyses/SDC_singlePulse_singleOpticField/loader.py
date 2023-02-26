@@ -192,12 +192,12 @@ def create_vta_df(*, master_df, columns_vta_df, levels, sortkey, usettings_value
             if theta != 0:
                 vta_low, vta_up = VTA2D_count_axialsym(
                     xX, zZ, data[-1], intensity=levels, gridorder='ij')
-                surf_low, surf_up = SURFVTA2D_count(
+                surf_avg, surf_low, surf_up = SURFVTA2D_count_hard_lower_upper(
                     xX, zZ, data[-1], intensity=levels, gridorder='ij', radial_data=True)
             else:
                 vta_low = np.full(levels.shape, np.nan)
                 vta_up = np.full(levels.shape, np.nan)
-                surf_low, surf_up = SURFVTA2D_count(
+                surf_avg, surf_low, surf_up = SURFVTA2D_count_hard_lower_upper(
                     xX, zZ, data[-1], intensity=levels, gridorder='ij', radial_data=False)
 
             # only use zdir because data is reorganized so that direction of interest is in zdir
@@ -206,6 +206,7 @@ def create_vta_df(*, master_df, columns_vta_df, levels, sortkey, usettings_value
         else:
             vta_low = np.full(levels.shape, np.nan)
             vta_up = np.full(levels.shape, np.nan)
+            surf_avg = np.full(levels.shape, np.nan)
             surf_low = np.full(levels.shape, np.nan)
             surf_up = np.full(levels.shape, np.nan)
             best_optrode_pos = np.full(levels.shape, np.nan)
@@ -220,10 +221,11 @@ def create_vta_df(*, master_df, columns_vta_df, levels, sortkey, usettings_value
             ['TAC_log10', 'Gmax_log10', 'dur_log10', 'amp_log10', 'phi', 'psi', 'nPulse'], axis=1)
 
         intm_df = intm_df.iloc[0:1]
-        for vta_low_i, vta_up_i, surf_low_i, surf_up_i, op_pos_i, op_pos_i_TAC, wop_pos_i_TAC, op_pos_i_TACamp, wop_pos_i_TACamp, level_i in zip(vta_low, vta_up, surf_low, surf_up, best_optrode_pos, best_optrode_pos_TAC, worst_optrode_pos_TAC, best_optrode_pos_TACamp, worst_optrode_pos_TACamp, levels):
+        for vta_low_i, vta_up_i, surf_avg_i, surf_low_i, surf_up_i, op_pos_i, op_pos_i_TAC, wop_pos_i_TAC, op_pos_i_TACamp, wop_pos_i_TACamp, level_i in zip(vta_low, vta_up, surf_avg, surf_low, surf_up, best_optrode_pos, best_optrode_pos_TAC, worst_optrode_pos_TAC, best_optrode_pos_TACamp, worst_optrode_pos_TACamp, levels):
             idx += 1
             intm_df['vta_low'] = vta_low_i
             intm_df['vta_up'] = vta_up_i
+            intm_df['surf_avg'] = surf_avg_i
             intm_df['surf_low'] = surf_low_i
             intm_df['surf_up'] = surf_up_i
             intm_df['level'] = level_i
@@ -358,7 +360,7 @@ if __name__ == '__main__':
     filepath = './Results\SDC\SDC_singlePulse_Ugent470_gray_invivo_multicell'
     filename = 'all_data_filled.csv'
 
-    savepath_vta = os.path.join(filepath, f'vta_logspace(-1,3,9)2.csv')
+    savepath_vta = os.path.join(filepath, f'vta_logspace(-1,3,9)3.csv')
     master_df = _collect_masterdf(
         filepath, filename, recollect, fill_missing_xyzpositions_flag)
     vta_df = _calc_vta(filepath=filepath, filename=filename,

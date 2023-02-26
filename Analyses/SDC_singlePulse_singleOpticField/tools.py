@@ -60,7 +60,69 @@ def VTA2D_count_axialsym(rR: np.ndarray, zZ: np.ndarray, data: np.ndarray, *, in
     return vta_lower, vta_upper
 
 
-def SURFVTA2D_count(xX: np.ndarray, zZ: np.ndarray, data: np.ndarray, *, intensity: list, gridorder: str, radial_data: bool = False):
+def SURFVTA2D_count_hard_lower_upper(xX: np.ndarray, zZ: np.ndarray, data: np.ndarray, *, intensity: list, gridorder: str, radial_data: bool = False):
+    # calculation of lower and upper surfaces
+    # lower with erosion first
+    # upper with dilation
+    # logic average provided as well
+    if gridorder == 'ij':
+        # make meshgrid order xy
+        #gridorder = 'ij'
+        xX = xX.T
+        zZ = zZ.T
+        data = data.T
+        #gridorder = 'xy'
+
+    dZ = np.unique(np.round(np.diff(zZ, axis=0).ravel(), 6))
+    dX = np.unique(np.round(np.diff(xX, axis=1).ravel(), 6))
+    if len(dZ) > 1 or len(dX) > 1:
+        raise ValueError('method currently only for fixed dZ or dX')
+    dZs = np.ones((zZ.shape[0], 1))*dZ
+    dZs[0, :] = 0
+    dXs = np.ones((1, xX.shape[1]))*dX
+    dXs[:, 0] = 0
+    surfs_opening = dZs*dXs
+
+    # create dilated volumes
+    dZs = np.ones((zZ.shape[0]+2, 1))*dZ
+    dZs[0, :] = 0
+    dXs = np.ones((1, xX.shape[1]+2-1*radial_data))*dX
+    dXs[:, 0] = 0
+    surfs_dilated = dZs*dXs
+
+    # create avg expected surf
+    dZs = np.ones((zZ.shape[0], 1))*dZ
+    if radial_data:
+        dZs[0, :] = dZ/2
+    dXs = np.ones((1, xX.shape[1]))*dX
+    surfs_avg = dZs*dXs
+
+    surf_lower = []
+    surf_upper = []
+    surf_avg = []
+    for intens in intensity:
+        mask = data <= intens
+        mask_dilated = np.zeros(
+            (mask.shape[0]+2, mask.shape[1]+2-1*radial_data))
+        idx = np.where(mask)
+        mask_dilated[idx[0]+1, idx[1]+1-radial_data] = 1
+        mask_dilated = _enclosed_by_fourTrue(binary_dilation(
+            mask_dilated, structure=np.ones((3, 3)))) & _enclosed_by_atleastOne(mask_dilated)
+
+        mask_opening = _enclosed_by_fourTrue(mask)
+
+        surfs_masked_opened = surfs_opening[mask_opening]
+        surf_lower.append(sum(surfs_masked_opened)*(1+radial_data))
+
+        surfs_masked_dilated = surfs_dilated[mask_dilated]
+        surf_upper.append(sum(surfs_masked_dilated)*(1+radial_data))
+
+        surfs_masked = surfs_avg[mask]
+        surf_avg.append(sum(surfs_masked)*(1+radial_data))
+    return surf_avg, surf_lower, surf_upper
+
+
+def SURFVTA2D_count_soft_lower_upper(xX: np.ndarray, zZ: np.ndarray, data: np.ndarray, *, intensity: list, gridorder: str, radial_data: bool = False):
     if gridorder == 'ij':
         # make meshgrid order xy
         #gridorder = 'ij'
@@ -290,3 +352,18 @@ def best_optrode_position_xdir(xX: np.ndarray, zZ: np.ndarray, data: np.ndarray,
     bestx_perz = xX[0, idx_min]
     Imin = data[np.arange(len(idx_min)), idx_min]
     return bestx, bestx_TAC, worstx_TAC, bestx_perz, Imin
+
+
+def _enclosed_by_fourTrue(a):
+    n, m = a.shape
+    a2 = a+np.roll(a, 1, axis=0)
+    a3 = a2+np.roll(a2, 1, axis=1)
+    a3[:, 0] = 0
+    a3[0, :] = 0
+    return np.array(a3 == 4).astype(int)
+
+
+def _enclosed_by_atleastOne(a):
+    a2 = a+np.roll(a, 1, axis=0)
+    a3 = a2+np.roll(a2, 1, axis=1)
+    return np.array(a3 >= 1).astype(int)
