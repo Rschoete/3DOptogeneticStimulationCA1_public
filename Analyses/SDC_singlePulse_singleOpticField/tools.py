@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy import integrate
-from scipy.ndimage import binary_dilation
+from scipy.ndimage import binary_dilation, binary_erosion
 
 
 def selection_generator(df: pd.DataFrame, unique_values_columns: dict, verbose: bool = False, **kwargs) -> np.ndarray:
@@ -355,15 +355,29 @@ def best_optrode_position_xdir(xX: np.ndarray, zZ: np.ndarray, data: np.ndarray,
 
 
 def _enclosed_by_fourTrue(a):
-    n, m = a.shape
-    a2 = a+np.roll(a, 1, axis=0)
-    a3 = a2+np.roll(a2, 1, axis=1)
-    a3[:, 0] = 0
-    a3[0, :] = 0
-    return np.array(a3 == 4).astype(int)
+    # origin:
+    #  0  0: [[1, 1], [1, (1)]]
+    #  0 -1: [[1, 1], [(1), 1]]
+    # -1  0: [[1, (1)], [1, 1]]
+    # -1 -1: [[(1), 1], [1, 1]]
+    return binary_erosion(a, structure=np.ones((2, 2)), origin=(0, 0)).astype(int)
 
 
 def _enclosed_by_atleastOne(a):
-    a2 = a+np.roll(a, 1, axis=0)
-    a3 = a2+np.roll(a2, 1, axis=1)
-    return np.array(a3 >= 1).astype(int)
+    # dilation
+    #  0  0: [[(1), 1], [1, 1]]
+    #  0 -1: [[1, (1)], [1, 1]]
+    # -1  0: [[1, 1], [(1), 1]]
+    # -1 -1: [[1, 1], [1, (1)]]
+    '''
+
+    see source code in scipy ndimage.binary_dilation (27/02/2023)
+        for ii in range(len(origin)):
+            origin[ii] = -origin[ii]
+            if not structure.shape[ii] & 1:
+                origin[ii] -= 1
+
+        return _binary_erosion(input, structure, iterations, mask,
+                            output, border_value, origin, 1, brute_force)
+    '''
+    return binary_dilation(a, structure=np.ones((2, 2)), origin=(-1, -1))
