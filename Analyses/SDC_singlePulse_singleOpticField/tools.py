@@ -92,9 +92,9 @@ def SURFVTA2D_count_hard_lower_upper(xX: np.ndarray, zZ: np.ndarray, data: np.nd
 
     # create avg expected surf
     dZs = np.ones((zZ.shape[0], 1))*dZ
-    if radial_data:
-        dZs[0, :] = dZ/2
     dXs = np.ones((1, xX.shape[1]))*dX
+    if radial_data:
+        dXs[:, 0] = dX/2
     surfs_avg = dZs*dXs
 
     surf_lower = []
@@ -111,7 +111,7 @@ def SURFVTA2D_count_hard_lower_upper(xX: np.ndarray, zZ: np.ndarray, data: np.nd
 
         mask_opening = _enclosed_by_fourTrue(mask)
 
-        surfs_masked_opened = surfs_opening[mask_opening]
+        surfs_masked_opened = surfs_opening[mask_opening.astype(bool)]
         surf_lower.append(sum(surfs_masked_opened)*(1+radial_data))
 
         surfs_masked_dilated = surfs_dilated[mask_dilated]
@@ -246,9 +246,13 @@ def best_optrode_position_zdir(xX: np.ndarray, zZ: np.ndarray, data: np.ndarray,
 
         # find row of interest
         sumMask = np.sum(mask, axis=1)
+
+        # best location
         idx = np.where(sumMask == max(sumMask))[0]
         if len(idx) > 1:
             data_masked = data*mask
+            data_TAC_masked = data_TAC*mask
+
             data_masked = data_masked[idx, :]
             data_masked[np.isnan(data_masked)] = 0
 
@@ -263,29 +267,56 @@ def best_optrode_position_zdir(xX: np.ndarray, zZ: np.ndarray, data: np.ndarray,
             bestz.append(zZ[idx[idx2], 0])
 
             # best z TAC
-            data_TAC_masked = data_TAC*mask
             data_TAC_masked = data_TAC_masked[idx, :]
             data_TAC_masked[np.isnan(data_TAC_masked)] = 0
             data_TAC_avg = np.sum(data_TAC_masked, axis=1) / \
                 np.sum(mask[idx, :], axis=1)
             idx_TAC_min = np.nanargmin(data_TAC_avg)
-            idx_TAC_max = np.nanargmax(data_TAC_avg)
             bestz_TAC.append(zZ[idx[idx_TAC_min], 0])
-            worstz_TAC.append(zZ[idx[idx_TAC_max], 0])
 
             data_TACamp_avg = np.nansum(data_TAC_masked/data_masked, axis=1) / \
                 np.sum(mask[idx, :], axis=1)
             idx_TACamp_min = np.nanargmin(data_TACamp_avg)
-            idx_TACamp_max = np.nanargmax(data_TACamp_avg)
             bestz_TACamp.append(zZ[idx[idx_TACamp_min], 0])
-            worstz_TACamp.append(zZ[idx[idx_TACamp_max], 0])
 
         else:
             bestz.append(zZ[idx[0], 0])
             bestz_TAC.append(zZ[idx[0], 0])
-            worstz_TAC.append(zZ[np.argmax(np.max(data_TAC, axis=1)), 0])
             bestz_TACamp.append(zZ[idx[0], 0])
-            worstz_TACamp.append(zZ[np.argmax(np.max(data_TAC, axis=1)), 0])
+
+        # worst location
+        idx_worst = np.where(sumMask == min(sumMask))[0]
+        if len(idx_worst) > 1:
+            # if nan in data => could not find threshold -> above upper limit of simulation therefore worst position
+            data_w = data[idx_worst, :]
+            if any(np.isnan(data_w).ravel()):
+                idx_nan = np.sum(np.isnan(data_w), axis=1)
+                idx_nan = np.where(idx_nan == max(idx_nan))[0]
+            else:
+                idx_nan = np.arange(len(idx_worst)).astype(int)
+
+            data_w = data_w[idx_nan, :]
+            data_TAC_w = data_TAC[idx_worst, :]
+            data_TAC_w = data_TAC_w[idx_nan, :]
+            if any(np.isnan(data_TAC_w.ravel())):
+                raise ValueError('data_TAC_w contains nan?')
+            data_remaining_nan = np.isnan(data_w)
+            data_w[data_remaining_nan] = 0
+            TAC_remaining_nan = np.isnan(data_TAC_w)
+            data_TAC_w[TAC_remaining_nan] = 0
+
+            data_TAC_avg = np.sum(data_TAC_w, axis=1) / \
+                np.sum(~TAC_remaining_nan, axis=1)
+            idx_TAC_max = np.nanargmax(data_TAC_avg)
+            worstz_TAC.append(zZ[idx_worst[idx_nan[idx_TAC_max]], 0])
+
+            data_TACamp_avg = np.nansum(data_TAC_w/data_w, axis=1) / \
+                np.sum((~data_remaining_nan) & (~TAC_remaining_nan), axis=1)
+            idx_TACamp_max = np.nanargmax(data_TACamp_avg)
+            worstz_TACamp.append(zZ[idx_worst[idx_nan[idx_TACamp_max]], 0])
+        else:
+            worstz_TAC.append(zZ[idx_worst, 0])
+            worstz_TACamp.append(zZ[idx_worst, 0])
 
     idx_min = np.argmin(data, axis=0)
     bestZ_perR = zZ[idx_min, 0]
@@ -360,7 +391,7 @@ def _enclosed_by_fourTrue(a):
     #  0 -1: [[1, 1], [(1), 1]]
     # -1  0: [[1, (1)], [1, 1]]
     # -1 -1: [[(1), 1], [1, 1]]
-    return binary_erosion(a, structure=np.ones((2, 2)), origin=(0, 0)).astype(int)
+    return binary_erosion(a, structure=np.ones((2, 2)), origin=(0, 0)).astype(bool)
 
 
 def _enclosed_by_atleastOne(a):
@@ -380,4 +411,4 @@ def _enclosed_by_atleastOne(a):
         return _binary_erosion(input, structure, iterations, mask,
                             output, border_value, origin, 1, brute_force)
     '''
-    return binary_dilation(a, structure=np.ones((2, 2)), origin=(-1, -1))
+    return binary_dilation(a, structure=np.ones((2, 2)), origin=(-1, -1)).astype(bool)
