@@ -135,7 +135,8 @@ def _main_const_intensity_single_pulse():
     opsinlocs_pyrs = ['all', 'soma', 'axon', 'basal', 'alldend', 'apic']
     opsinlocs_interss = ['all', 'soma', 'alldend', 'axon']
     Gmaxs = []  # see in loop below
-    pds = [0.1, 1, 10, 100, 1000]
+    Gmaxs_must = list(np.logspace(-1, 1.5, 8))
+    pds = list(np.logspace(-1, 3, 9))
 
     for cell in Celltemplates:
         if 'pc' in cell.lower():
@@ -144,13 +145,14 @@ def _main_const_intensity_single_pulse():
             opsinlocs = opsinlocs_interss
         for opsinloc in opsinlocs:
             if opsinloc in ['soma', 'axon']:
-                Gmaxs = list(np.logspace(-2, 1, 10))
+                Gmaxs = list(
+                    np.unique(list(np.logspace(-2, 1, 10))+Gmaxs_must))
             else:
-                Gmaxs = list(np.logspace(-1, 2, 10))
+                Gmaxs = list(
+                    np.unique(list(np.logspace(-1, 2, 10))+Gmaxs_must))
             iter = -1
             sublist = []
             for Gmax in Gmaxs:
-                distr = f'distribution = lambda x: {1}'
                 iter += 1
 
                 filenameopt = folder+f'input{cell}_{opsinloc}_{iter}.json'
@@ -174,9 +176,10 @@ def _main_const_intensity_single_pulse():
 
                 input.cellsopt.opsin_options.opsinlocations = opsinloc
                 input.cellsopt.opsin_options.Gmax_total = Gmax  # uS
-                input.cellsopt.opsin_options.distribution = distr
+                input.cellsopt.opsin_options.distribution = f'distribution = lambda x: {1}'
                 # allign axo-somato-dendritic axis with z-axis
                 input.cellsopt.init_options.theta = -np.pi/2
+                input.cellsopt.init_options.replace_axon = False
 
                 input.stimopt.Ostimparams.filepath = 'Inputs/LightIntensityProfile/constant.txt'
                 input.stimopt.Ostimparams.amp = 1/3*10**5
@@ -191,6 +194,7 @@ def _main_const_intensity_single_pulse():
                 input.analysesopt.SDOptogenx.options['verbose'] = False
                 input.analysesopt.SDOptogenx.startamp = 1000
                 input.analysesopt.SDOptogenx.durs = pds
+                input.analysesopt.SDOptogenx.nr_pulseOI = 1
                 input.analysesopt.SDOptogenx.record_iOptogenx = 'chr2h134r'
 
                 input.analysesopt.recordSuccesRatio = False
@@ -762,5 +766,6 @@ def _main_EET_multicells_allparams_pitchcelltypesplit_xposssplit():
 
 
 if __name__ == '__main__':
-    _main_EET_multicells_allparams_pitchcelltypesplit_xposssplit()
+    # _main_EET_multicells_allparams_pitchcelltypesplit_xposssplit()
+    _main_const_intensity_single_pulse()
     print('finish')
