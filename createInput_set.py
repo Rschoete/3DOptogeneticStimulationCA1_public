@@ -644,6 +644,8 @@ def _main_EET_multicells_allparams_pitchcelltypesplit_xposssplit():
     zposs_radial = list(np.linspace(0, 1100, 11, endpoint=True))
     zposs_x = list(np.linspace(0, 5000, 11, endpoint=True))
     for celltype in ['pyr', 'int']:
+        OAT_samples_EET = pd.read_csv(
+            f'./Inputs/samples_EET_multicell_in_opticalField_pitchcelltypesplit{celltype}_v2.csv')
         sublist = []
         xposs_sublist = []
         yposs_sublist = []
@@ -658,17 +660,21 @@ def _main_EET_multicells_allparams_pitchcelltypesplit_xposssplit():
         for pitch, xt, zt in zip(pitches, xtrans, ztrans):
             for i in range(len(OAT_samples_EET)):
 
-                cell = OAT_samples_EET['cell'].iloc[i]
+                cell = OAT_samples_EET['cell'].iloc[i].astype(int)
                 mua = OAT_samples_EET['mua'].iloc[i]
                 mus = OAT_samples_EET['mus'].iloc[i]
                 g = OAT_samples_EET['g'].iloc[i]
                 redus = mus*(1-g)
                 Gmax = OAT_samples_EET['Gmax'].iloc[i]
-                opsinloc = OAT_samples_EET['loc'].iloc[i]
+                opsinloc = OAT_samples_EET['loc'].iloc[i].astype(int)
                 if celltype == 'pyr':
-                    opsinloc = int(np.floor(opsinloc/3))
+                    if opsinloc > 3:
+                        raise ValueError()
+                        opsinloc = int(np.floor(opsinloc/3))
                 elif celltype == 'int':
-                    opsinloc = int(np.floor(opsinloc/4))
+                    if opsinloc > 2:
+                        raise ValueError()
+                        opsinloc = int(np.floor(opsinloc/4))
                 roll = OAT_samples_EET['roll'].iloc[i]-np.pi
                 sim_idx = OAT_samples_EET['sim_idx'].iloc[i]
                 # map sim_idx to idx optical field
@@ -766,6 +772,6 @@ def _main_EET_multicells_allparams_pitchcelltypesplit_xposssplit():
 
 
 if __name__ == '__main__':
-    # _main_EET_multicells_allparams_pitchcelltypesplit_xposssplit()
-    _main_const_intensity_single_pulse()
+    _main_EET_multicells_allparams_pitchcelltypesplit_xposssplit()
+    # _main_const_intensity_single_pulse()
     print('finish')

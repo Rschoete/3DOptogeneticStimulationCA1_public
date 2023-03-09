@@ -183,23 +183,37 @@ def _main_sample_all_merge_tissue(save=False):
     plt.show()
 
 
-def _main_sample_pitchcelltypesplit_merge_tissue(save=False):
+def _main_sample_pitchcelltypesplit_merge_tissue(save: bool = False, celltype: Literal['pyr', 'int'] = 'pyr'):
     cells = ['CA1_PC_cAC_sig5', 'CA1_PC_cAC_sig6', 'cNACnoljp1', 'cNACnoljp2']
     locations = ['all', 'soma', 'axon', 'basal']
     pitches = [-np.pi/2, 0, np.pi/2]
+    if celltype == 'pyr':
+        loc_bound = 4
+    elif celltype == 'int':
+        loc_bound = 3
+    else:
+        raise ValueError('celltype should either be pyr or int')
+
     # skip columns in sobol sequence because already used to sample tissue parameters
     skip_columns = 4
+    r = 16
+    ubounds = [np.inf, 2, loc_bound, 2*np.pi]
+    discrete_samples = ['cell', 'loc']
     names = ['Gmax', 'cell', 'loc', 'roll']
-    bounds = [[1, 0.15], [0, 2], [0, 12], [0, 2*np.pi]]
+    bounds = [[1, 0.15], [0, 2], [0, loc_bound], [0, 2*np.pi]]
     dists = ['norm', 'unif', 'unif', 'unif']
     problem = {'num_vars': len(names), 'names': names,
                'bounds': bounds, 'dists': dists}
 
     samples = OAT_sampling_radial_SobolSequence(
-        problem, 16, method='radial', skip_columns=skip_columns)
+        problem, r, method='radial', skip_columns=skip_columns)
     print(samples)
     samples = scale_samples(samples, problem)
-    samples[:, [1, 2]] = np.floor(samples[:, [1, 2]]-1e-6).astype(int)
+
+    for ds in discrete_samples:
+        idx = names.index(ds)
+        samples[:, idx] = np.floor(samples[:, idx]-1e-6).astype(int)
+        samples = _check_if_changed(samples, idx, r, ubounds)
 
     df = pd.read_csv(
         'Inputs/optical_parameters_graymatter_invivo_EE_oat_idx.csv')
@@ -224,8 +238,20 @@ def _main_sample_pitchcelltypesplit_merge_tissue(save=False):
     print(mydf.head())
     if save:
         mydf.to_csv(
-            'samples_EET_multicell_in_opticalField_pitchcelltypesplit.csv', index=False)
+            f'samples_EET_multicell_in_opticalField_pitchcelltypesplit{celltype}_v2.csv', index=False)
     plt.show()
+
+
+def _check_if_changed(samples, idx, r, bounds):
+    M = samples.shape[1]+1
+    for i in range(r):
+        i = i*M
+        centre = samples[i, idx]
+        step = samples[i+idx+1, idx]
+        if centre == step:
+            samples[i+idx+1, idx] = (centre+(-1) **
+                                     np.random.randint(2)) % bounds[idx]
+    return samples
 
 
 if __name__ == '__main__':
@@ -233,4 +259,4 @@ if __name__ == '__main__':
     import pandas as pd
 
     # _main_sample_tissueparam()
-    _main_sample_pitchcelltypesplit_merge_tissue(save=True)
+    _main_sample_pitchcelltypesplit_merge_tissue(save=True, celltype='int')
