@@ -9,6 +9,7 @@ import Functions.globalFunctions.morphology_v2 as mphv2
 from Model import Cells
 
 cmap_contour = sns.color_palette("mako", as_cmap=True)
+cmap_neuron = sns.light_palette("teal", as_cmap=True)
 
 figw = 3.7
 
@@ -70,6 +71,7 @@ set_size(figw, 10/8*figw, ax=ax)
 h.nrn_load_dll("./Model/Mods/nrnmech.dll")
 print("succes load nrnmech.dll")
 
+
 fig = plt.figure(figsize=(7, 7))
 ax = plt.subplot(111, projection='3d')
 
@@ -87,9 +89,14 @@ t = np.arange(0, 100*1.1, 0.01/10)
 myfield = EcF.prepareDataforInterp(myfield_init, 'ninterp')
 EcF.setXstim(pyr1.allsec, t, 10, 10, 1, myfield, True,
              'singleSquarePulse', stimtype='optical', netpyne=False)
-mphv2.shapeplot(h, ax, pyr1.allsec, cvals_type='os_xtra',
-                cmap=cmap_contour, colorscale='log10')
+pttocm = 0.0352777778
+scale_diams = 4/pttocm/1100*5
+scale_diams_list = [scale_diams]*len(pyr1.allsec)
+scale_diams_list[-1] = scale_diams_list[-1]
+_, cbar = mphv2.shapeplot(h, ax, pyr1.allsec[-1::-1], cvals_type='os_xtra',
+                          cmap=cmap_neuron, colorscale='log10', scale_diams=scale_diams_list)
 ax.grid(False)
+cbar.ax.set_yticks([-0.5, -1, -1.5, -2])
 
 ax.set_xticks([])
 ax.w_xaxis.line.set_color((1.0, 1.0, 1.0, 0.0))
@@ -99,9 +106,10 @@ ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
 ax.set_zlim([200, 850])
 ax.set_xlim([-200, 450])
 ax.set_ylim([-200, 450])
+ax.view_init(elev=0, azim=0)
+set_size(figw*1.5, figw*1.5, ax=ax)
 ax.set_zticklabels([f'{x/1000:0.1f}' for x in ax.get_zticks()])
 ax.set_yticklabels([f'{x/1000:0.1f}' for x in ax.get_yticks()])
 ax.invert_zaxis()
-ax.view_init(elev=0, azim=0)
-set_size(figw*1.5, figw*1.5, ax=ax)
 plt.show()
+fig.savefig('neuroninfield.svg', dpi=300)

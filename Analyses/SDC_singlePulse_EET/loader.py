@@ -51,11 +51,11 @@ def _recollect_data_df(*, filepath, result, all_columns, cell_init_options, sett
 
     # list all data and input file locations
     alldata_files = [x for x in glob.glob(os.path.join(
-        filepath, '**/data.json'), recursive=True) if not ('ToConcat' in x or exclude_folders_with in x)]
+        filepath, '**/data.json'), recursive=True) if not ('Failed_EET' in x or 'ToConcat' in x or exclude_folders_with in x)]
     allinput_files = [x for x in glob.glob(os.path.join(
-        filepath, '**/input.json'), recursive=True) if not ('ToConcat' in x or exclude_folders_with in x)]
+        filepath, '**/input.json'), recursive=True) if not ('Failed_EET' in x or 'ToConcat' in x or exclude_folders_with in x)]
     dir_list = [x for x in glob.glob(os.path.join(
-        filepath, '*')) if os.path.isdir(x) and not ('ToConcat' in x or exclude_folders_with in x)]
+        filepath, '*')) if os.path.isdir(x) and not ('Failed_EET' in x or 'ToConcat' in x or exclude_folders_with in x)]
     print(
         f"result files: {len(alldata_files)}, input files: {len(allinput_files)}, directories: {len(dir_list)}")
 
@@ -285,13 +285,15 @@ def _collect_masterdf(filepath, filename, recollect, fill_missing_xyzpositions_f
 
 
 def append_EETinfo(master_df: pd.DataFrame, EET_info: pd.DataFrame, master_key: str = 'EETsimidx', EET_info_key: str = 'sim_idx') -> pd.DataFrame:
-    if isinstance(EET_info,dict):
-        if not 'celltype' in master_df.colummns:
-            master_df['neurontemplate2'] = master_df['neurontemplate'].replace({'CA1_PC_cAC_sig5':'pyr_1', 'CA1_PC_cAC_sig6':'pyr_2', 'cNACnoljp1':'bc_1', 'cNACnoljp2':'bc_2'})
-            master_df[['celltype','number']] = master_df['neurontemplate2'].str.split('_',expand=True)
+    if isinstance(EET_info, dict):
+        if not 'celltype' in master_df.columns:
+            master_df['neurontemplate2'] = master_df['neurontemplate'].replace(
+                {'CA1_PC_cAC_sig5': 'pyr_1', 'CA1_PC_cAC_sig6': 'pyr_2', 'cNACnoljp1': 'bc_1', 'cNACnoljp2': 'bc_2'})
+            master_df[['celltype', 'number']] = master_df['neurontemplate2'].str.split(
+                '_', expand=True)
         init_keys = []
-        for key,v in EET_info.items():
-            idx = master_df['celltype']==key
+        for key, v in EET_info.items():
+            idx = master_df['celltype'] == key
             columns_EET_info = list(v.columns)
             columns_EET_info.remove(EET_info_key)
             v = v.set_index(EET_info_key)
@@ -300,7 +302,7 @@ def append_EETinfo(master_df: pd.DataFrame, EET_info: pd.DataFrame, master_key: 
                 if not k_tmp in init_keys:
                     master_df[k_tmp] = master_df[master_key]
                     init_keys.append(k_tmp)
-                master_df.loc[idx,k_tmp] = master_df.loc[idx,k_tmp].map(v[k])
+                master_df.loc[idx, k_tmp] = master_df.loc[idx, k_tmp].map(v[k])
     else:
         columns_EET_info = list(EET_info.columns)
         columns_EET_info.remove(EET_info_key)
@@ -386,12 +388,12 @@ def _calc_vta(filepath, filename, savepath):
 
 
 if __name__ == '__main__':
-    recollect = True
-    fill_missing_xyzpositions_flag = True
+    recollect = False
+    fill_missing_xyzpositions_flag = False
 
     # Load data
     filepath = "./Results/SDC/SDC_EETUgent470grayinvivo_singlePulse/"
-    filename = 'all_data_filled.csv'
+    filename = 'all_data_filled_v2.csv'
     EETinfo = {}
     EETinfo['pyr'] = pd.read_csv(
         './Inputs/samples_EET_multicell_in_opticalField_pitchcelltypesplitpyr_v2.csv')
