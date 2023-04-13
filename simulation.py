@@ -33,7 +33,10 @@ def fieldStimulation(input, cell=None, verbose=False, **kwargs):
         # With this backend plots are not shown but can be saved
         mpluse("AGG")
     else:
-        mpluse("TKAGG")
+        try:
+            mpluse("TKAGG")
+        except Exception as e:
+            print(e)
 
     # important for reproducibility, seed based on ceratain date
     seed = input.seed
@@ -54,11 +57,11 @@ def fieldStimulation(input, cell=None, verbose=False, **kwargs):
         print(
             f'\t* celltype: {cell.celltype}\n\t* morphology: {cell.morphology}')
     elif cell is not None:
-        cell.rotate_Cell(inverse=True, init_rotation=True, allign_axis=False)
+        cell.rotate_Cell(inverse=True, init_rotation=True)
         for key in ['movesomatoorigin', 'ID', 'ty', 'col', 'phi', 'theta', 'psi']:
             setattr(cell, key, input.cellsopt.init_options[key])
         cell.moveSomaToOrigin()
-        cell.rotate_Cell(init_rotation=True, allign_axis=False)
+        cell.rotate_Cell(init_rotation=True)
     else:
         raise ValueError(
             f"input.neuronInput = {input.cellsopt.neurontemplate} is invalid. Possible templates are  {Cells.NeuronTemplates}")
@@ -424,111 +427,171 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
     import Functions.setup as stp
+    now = datetime.now()
+    cell = None
+    Optogxfield = None
 
-    # create dummy field
-    xlims = [-1000, 1000]
-    ylims = [-1000, 1000]
-    zlims = [-1000, 1000]
-    nx = 101
-    ny = 101
-    nz = 101
-    fieldtype = '2D'
-    #myfun = lambda x,y,z: x**2+y**2+(z-2.5)
-    xX, xY, xZ = np.meshgrid(np.linspace(xlims[0], xlims[1], nx), np.linspace(
-        ylims[0], ylims[1], ny), np.linspace(zlims[0], zlims[1], nz), indexing='ij')
-    myfun = np.vectorize(lambda x, y, z, a: 1 if ((z >= 0 and z <= 10) and (x**2+y**2) < 100**2) else (10/z)**(2/a) if (z > 10 and (x**2+y**2) < 100**2)
-                         else ((10/z)**(2/a)*100**(2/a)/(x**2+y**2)**(1/a)) if z > 10 else ((1/(z+10))**(2/a)*100**(2/a)/(x**2+y**2)**(1/a)) if (z > 0 and z <= 10) else 1e-6)
-    # 3D field
-    if fieldtype == '3D':
-        data = np.array((xX.ravel(), xY.ravel(), xZ.ravel())).T
-        field = np.hstack(
-            (data/10, 1000*myfun(data[:, 0], data[:, 1], data[:, 2], 1)[:, None]))
-    else:
-        idx = int(np.ceil(ny/2)-1)
-        xX = xX[:, idx, :]
-        xY = xY[:, idx, :]
-        xZ = xZ[:, idx, :]
-        data = np.array((xX.ravel(), xY.ravel(), xZ.ravel())).T
-        field = np.hstack(
-            (data/10, 1000*myfun(data[:, 0], data[:, 1], data[:, 2], 1)[:, None]))
+    cellname = Cells.NeuronTemplates[0]
+    opsinloc = 'all'
+    idx = [0, 1, 2, 3, 5, 7, 9, 11, 13, 14]
+    GmaxsIrrpd10 = [[0.2276, 0.4642, 0.5179, 1., 1.1788, 2.1544, 2.6827, 4.6416, 6.1054, 10., 13.895, 21.5443, 31.6228, 46.4159, 100.],
+                    [4.0631867e+00, 4.2123000e-01, 3.2767360e-01, 9.7869800e-02, 7.6211500e-02, 3.0885000e-02, 2.2383000e-02, 1.0271300e-02, 6.9475000e-03, 3.5438000e-03, 2.2676000e-03, 1.2831000e-03, 7.7960000e-04, 4.7540000e-04, 1.8280000e-04]]
+    pds = [100, 1000]
+    pd = 10
 
-    # constant field of 1
-    xX, xY, xZ = np.meshgrid(np.linspace(xlims[0], xlims[1], 2), np.linspace(
-        ylims[0], ylims[1], 2), np.linspace(zlims[0], zlims[1], 2), indexing='ij')
-    idx = int(np.ceil(2/2)-1)
-    xX = xX[:, idx, :]
-    xY = xY[:, idx, :]
-    xZ = xZ[:, idx, :]
-    data = np.array((xX.ravel(), xY.ravel(), xZ.ravel())).T
-    field = np.hstack((data*10, np.ones((len(data), 1))))
-    field = field[:, [0, 2, 3]]
-    field = eF.prepareDataforInterp(field, 'ninterp')
+    iter = -1
+    for idx in idx[:]:
+        iter += 1
 
-    input = stp.simParams(
-        {'duration': 200, 'test_flag': True, 'save_flag': True, 'plot_flag': True})
+        input = stp.simParams({'test_flag': False, 'save_data_flag': True,
+                               'save_input_flag': True, 'save_flag': True, 'plot_flag': False})
 
-    input.stimopt.stim_type = ['Optogxstim']
-    input.cellsopt.neurontemplate = Cells.NeuronTemplates[0]
-    input.simulationType = ['normal', 'SD_Optogenx']
-    input.cellsopt.opsin_options.opsinlocations = 'apicalnoTuft'
-    input.cellsopt.opsin_options.Gmax_total = None  # uS
-    input.cellsopt.opsin_options.distribution = lambda x: 1000 * \
-        (np.exp(-np.linalg.norm(np.array(x)-[0, 0, 0])/200))
-    input.v0 = -70
+        input.resultsFolder = '/Temp/' + \
+            f'{pd}{cellname}_{opsinloc}_{iter}'
+        input.subfolderSuffix = ''
 
-    #input.stimopt.Ostimparams.filepath = "Inputs/LightIntensityProfile/Ugent470_gray_invitro_np1e7_res5emin3_cyl_5x10_gf1.txt"
-    input.stimopt.Ostimparams.filepath = 'Inputs/LightIntensityProfile/constant.txt'
-    input.stimopt.Ostimparams.amp = 10
-    input.stimopt.Ostimparams.delay = 100
-    input.stimopt.Ostimparams.pulseType = 'singleSquarePulse'
-    input.stimopt.Ostimparams.dur = 50
-    input.stimopt.Ostimparams.options = {
-        'prf': 1/2000, 'dc': 1/20000, 'theta': -np.pi/2, 'xT': [0, 0, 100]}
+        input.duration = 200+pd
+        input.v0 = -70
 
-    input.analysesopt.SDOptogenx.record_iOptogenx = 'chr2h134r'
-    input.analysesopt.SDOptogenx.options['n_iters'] = 2
-    input.analysesopt.SDOptogenx.durs = np.logspace(-2, 1, 2)
-    input.analysesopt.SDOptogenx.startamp = 1000
-    input.analysesopt.SDOptogenx.nr_pulseOI = 2
-    '''
-    input.stimopt.Estimparams.filepath = 'Inputs\ExtracellularPotentials\Reference - recessed\PotentialDistr-600um-20umMESH_structured.txt'#'Inputs\ExtracellularPotentials\Reference - recessed\PotentialDistr-600um-20umMESH_refined_masked_structured.txt'
-    input.stimopt.Estimparams.delay = input.duration+50
-    input.stimopt.Estimparams.dur = 10
-    input.stimopt.Estimparams.options['phi'] = np.pi/2
-    input.stimopt.Estimparams.options['xT'] = [0,0,250]
-    input.cellsopt.extracellular = True
+        input.stimopt.stim_type = ['Optogxstim']
+        input.simulationType = ['normal']
 
-    input.analysesopt.shapeplots.append(dict(cvals_type='es'))
+        input.cellsopt.neurontemplate = cellname
 
-    input.analysesopt.SDeVstim.options['simdur']=200
-    input.analysesopt.SDeVstim.options['delay']=100
-    input.analysesopt.SDeVstim.options['vinit']=-70
-    input.analysesopt.SDeVstim.options['n_iters']=2
-    input.analysesopt.SDeVstim.durs = np.array([1e0,2e0])
+        input.cellsopt.opsin_options.opsinlocations = opsinloc
+        input.cellsopt.opsin_options.Gmax_total = GmaxsIrrpd10[0][idx]  # uS
+        input.cellsopt.opsin_options.distribution = f'distribution = lambda x: {1}'
+        # allign axo-somato-dendritic axis with z-axis
+        input.cellsopt.init_options.theta = -np.pi/2
+        input.cellsopt.init_options.replace_axon = False
 
-    input.analysesopt.SDOptogenx.options['simdur']=200
-    input.analysesopt.SDOptogenx.options['delay']=100
-    input.analysesopt.SDOptogenx.options['vinit']=-70
-    input.analysesopt.SDOptogenx.options['n_iters']=2
-    input.analysesopt.SDOptogenx.options['verbose'] = True
-    input.analysesopt.SDOptogenx.startamp = 1000
-    input.analysesopt.SDOptogenx.durs = np.logspace(-2,1,2)
-    input.analysesopt.SDOptogenx.options['dc_sdc'] = input.analysesopt.SDOptogenx.durs/10
-    input.analysesopt.SDOptogenx.nr_pulseOI = 2
+        input.stimopt.Ostimparams.filepath = 'Inputs/LightIntensityProfile/constant.txt'
+        input.stimopt.Ostimparams.amp = GmaxsIrrpd10[1][idx]*1000
+        input.stimopt.Ostimparams.delay = 100
+        input.stimopt.Ostimparams.pulseType = 'singleSquarePulse'
+        input.stimopt.Ostimparams.dur = pd
 
-    input.analysesopt.VTAOptogenx.options['simdur']=150
-    input.analysesopt.VTAOptogenx.options['delay']=50
-    input.analysesopt.VTAOptogenx.options['vinit']=-70
-    input.analysesopt.VTAOptogenx.options['n_iters']=3
-    input.analysesopt.VTAOptogenx.options['verbose'] = True
-    input.analysesopt.VTAOptogenx.options['scale_initsearch'] = 4
-    input.analysesopt.VTAOptogenx.searchdir = np.array([1,0,0])
-    input.analysesopt.VTAOptogenx.startpos = np.array([np.zeros(5)+24,np.zeros(5),[1,5,10,20,30]]).T
-    '''
+        input.analysesopt.recordSuccesRatio = True
+        input.analysesopt.sec_plot_flag = False
+        input.analysesopt.save_traces = True
+        input.analysesopt.save_rasterplot = True
+        input.analysesopt.save_SDplot = False
+        input.analysesopt.save_shapeplots = True
+        input.analysesopt.save_VTAplot = False
 
-    input.analysesopt.succesRatioOptions['window'] = 100
+        input, data, cell, Optogxfield, _ = fieldStimulation(
+            input, cell=cell, Optogxfield=Optogxfield)
 
-    fieldStimulation(input, verbose=True)
 
-    if input.plot_flag:
-        plt.show()
+# if __name__ == '__main__':
+#     import matplotlib.pyplot as plt
+
+#     import Functions.setup as stp
+
+#     # create dummy field
+#     xlims = [-1000, 1000]
+#     ylims = [-1000, 1000]
+#     zlims = [-1000, 1000]
+#     nx = 101
+#     ny = 101
+#     nz = 101
+#     fieldtype = '2D'
+#     #myfun = lambda x,y,z: x**2+y**2+(z-2.5)
+#     xX, xY, xZ = np.meshgrid(np.linspace(xlims[0], xlims[1], nx), np.linspace(
+#         ylims[0], ylims[1], ny), np.linspace(zlims[0], zlims[1], nz), indexing='ij')
+#     myfun = np.vectorize(lambda x, y, z, a: 1 if ((z >= 0 and z <= 10) and (x**2+y**2) < 100**2) else (10/z)**(2/a) if (z > 10 and (x**2+y**2) < 100**2)
+#                          else ((10/z)**(2/a)*100**(2/a)/(x**2+y**2)**(1/a)) if z > 10 else ((1/(z+10))**(2/a)*100**(2/a)/(x**2+y**2)**(1/a)) if (z > 0 and z <= 10) else 1e-6)
+#     # 3D field
+#     if fieldtype == '3D':
+#         data = np.array((xX.ravel(), xY.ravel(), xZ.ravel())).T
+#         field = np.hstack(
+#             (data/10, 1000*myfun(data[:, 0], data[:, 1], data[:, 2], 1)[:, None]))
+#     else:
+#         idx = int(np.ceil(ny/2)-1)
+#         xX = xX[:, idx, :]
+#         xY = xY[:, idx, :]
+#         xZ = xZ[:, idx, :]
+#         data = np.array((xX.ravel(), xY.ravel(), xZ.ravel())).T
+#         field = np.hstack(
+#             (data/10, 1000*myfun(data[:, 0], data[:, 1], data[:, 2], 1)[:, None]))
+
+#     # constant field of 1
+#     xX, xY, xZ = np.meshgrid(np.linspace(xlims[0], xlims[1], 2), np.linspace(
+#         ylims[0], ylims[1], 2), np.linspace(zlims[0], zlims[1], 2), indexing='ij')
+#     idx = int(np.ceil(2/2)-1)
+#     xX = xX[:, idx, :]
+#     xY = xY[:, idx, :]
+#     xZ = xZ[:, idx, :]
+#     data = np.array((xX.ravel(), xY.ravel(), xZ.ravel())).T
+#     field = np.hstack((data*10, np.ones((len(data), 1))))
+#     field = field[:, [0, 2, 3]]
+#     field = eF.prepareDataforInterp(field, 'ninterp')
+
+#     input = stp.simParams(
+#         {'duration': 200, 'test_flag': True, 'save_flag': True, 'plot_flag': True})
+
+#     input.stimopt.stim_type = ['Optogxstim']
+#     input.cellsopt.neurontemplate = Cells.NeuronTemplates[0]
+#     input.simulationType = ['normal', 'SD_Optogenx']
+#     input.cellsopt.opsin_options.opsinlocations = 'apicalnoTuft'
+#     input.cellsopt.opsin_options.Gmax_total = None  # uS
+#     input.cellsopt.opsin_options.distribution = lambda x: 1000 * \
+#         (np.exp(-np.linalg.norm(np.array(x)-[0, 0, 0])/200))
+#     input.v0 = -70
+
+#     #input.stimopt.Ostimparams.filepath = "Inputs/LightIntensityProfile/Ugent470_gray_invitro_np1e7_res5emin3_cyl_5x10_gf1.txt"
+#     input.stimopt.Ostimparams.filepath = 'Inputs/LightIntensityProfile/constant.txt'
+#     input.stimopt.Ostimparams.amp = 10
+#     input.stimopt.Ostimparams.delay = 100
+#     input.stimopt.Ostimparams.pulseType = 'singleSquarePulse'
+#     input.stimopt.Ostimparams.dur = 50
+#     input.stimopt.Ostimparams.options = {
+#         'prf': 1/2000, 'dc': 1/20000, 'theta': -np.pi/2, 'xT': [0, 0, 100]}
+
+#     input.analysesopt.SDOptogenx.record_iOptogenx = 'chr2h134r'
+#     input.analysesopt.SDOptogenx.options['n_iters'] = 2
+#     input.analysesopt.SDOptogenx.durs = np.logspace(-2, 1, 2)
+#     input.analysesopt.SDOptogenx.startamp = 1000
+#     input.analysesopt.SDOptogenx.nr_pulseOI = 2
+#     '''
+#     input.stimopt.Estimparams.filepath = 'Inputs\ExtracellularPotentials\Reference - recessed\PotentialDistr-600um-20umMESH_structured.txt'#'Inputs\ExtracellularPotentials\Reference - recessed\PotentialDistr-600um-20umMESH_refined_masked_structured.txt'
+#     input.stimopt.Estimparams.delay = input.duration+50
+#     input.stimopt.Estimparams.dur = 10
+#     input.stimopt.Estimparams.options['phi'] = np.pi/2
+#     input.stimopt.Estimparams.options['xT'] = [0,0,250]
+#     input.cellsopt.extracellular = True
+
+#     input.analysesopt.shapeplots.append(dict(cvals_type='es'))
+
+#     input.analysesopt.SDeVstim.options['simdur']=200
+#     input.analysesopt.SDeVstim.options['delay']=100
+#     input.analysesopt.SDeVstim.options['vinit']=-70
+#     input.analysesopt.SDeVstim.options['n_iters']=2
+#     input.analysesopt.SDeVstim.durs = np.array([1e0,2e0])
+
+#     input.analysesopt.SDOptogenx.options['simdur']=200
+#     input.analysesopt.SDOptogenx.options['delay']=100
+#     input.analysesopt.SDOptogenx.options['vinit']=-70
+#     input.analysesopt.SDOptogenx.options['n_iters']=2
+#     input.analysesopt.SDOptogenx.options['verbose'] = True
+#     input.analysesopt.SDOptogenx.startamp = 1000
+#     input.analysesopt.SDOptogenx.durs = np.logspace(-2,1,2)
+#     input.analysesopt.SDOptogenx.options['dc_sdc'] = input.analysesopt.SDOptogenx.durs/10
+#     input.analysesopt.SDOptogenx.nr_pulseOI = 2
+
+#     input.analysesopt.VTAOptogenx.options['simdur']=150
+#     input.analysesopt.VTAOptogenx.options['delay']=50
+#     input.analysesopt.VTAOptogenx.options['vinit']=-70
+#     input.analysesopt.VTAOptogenx.options['n_iters']=3
+#     input.analysesopt.VTAOptogenx.options['verbose'] = True
+#     input.analysesopt.VTAOptogenx.options['scale_initsearch'] = 4
+#     input.analysesopt.VTAOptogenx.searchdir = np.array([1,0,0])
+#     input.analysesopt.VTAOptogenx.startpos = np.array([np.zeros(5)+24,np.zeros(5),[1,5,10,20,30]]).T
+#     '''
+
+#     input.analysesopt.succesRatioOptions['window'] = 100
+
+#     fieldStimulation(input, verbose=True)
+
+#     if input.plot_flag:
+#         plt.show()
