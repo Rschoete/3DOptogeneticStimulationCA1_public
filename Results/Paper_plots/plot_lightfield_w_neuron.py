@@ -35,7 +35,7 @@ fig = plt.figure()
 ax = fig.add_subplot(1, 1, 1)
 
 myfield_init = np.genfromtxt(
-    './Inputs/LightIntensityProfile/Ugent470nIrr_np1e7_res5emin3_gf1_cyl.txt', comments='%')
+    './Inputs/LightIntensityProfile/Ugent470nIrr_np1e7_res5emin3_gf1_cyl_5x10.txt', comments='%')
 myfield = myfield_init.copy()
 myfield[:, :-1] = myfield[:, :2]/1000
 myfield[myfield[:, -1] < 1e-7, -1] = 1e-7
@@ -64,9 +64,10 @@ im.set_edgecolor('face')
 ax.legend(handle[::-1], [f'{np.log10(x)*10:0.0f} dB' for x in levels][::-1],
           ncol=3, loc='upper right')
 ax.invert_yaxis()
-
-set_size(figw, 10/8*figw, ax=ax)
-
+ax.set_yticks([-4, -2, 0, 2, 4, 6])
+ax.set_box_aspect(1)
+set_size(figw, figw, ax=ax)
+fig.savefig('OpticField.svg', dpi=300)
 
 h.nrn_load_dll("./Model/Mods/nrnmech.dll")
 print("succes load nrnmech.dll")
@@ -97,6 +98,7 @@ _, cbar = mphv2.shapeplot(h, ax, pyr1.allsec[-1::-1], cvals_type='os_xtra',
                           cmap=cmap_neuron, colorscale='log10', scale_diams=scale_diams_list)
 ax.grid(False)
 cbar.ax.set_yticks([-0.5, -1, -1.5, -2])
+cbar.ax.set_yticklabels([-5, -10, -15, -20])
 
 ax.set_xticks([])
 ax.w_xaxis.line.set_color((1.0, 1.0, 1.0, 0.0))

@@ -139,7 +139,7 @@ for ax in axs:
 
 axs[1].spines['left'].set_visible(False)
 axs[1].set_yticks([])
-axs[0].set_ylabel('$i_{chr2}$ [$\mu$A/$cm^2$]')
+axs[0].set_ylabel('$i_{chr2}$ [mA/$cm^2$]')
 if save_figs:
     fig.savefig('opsincurrent.svg')
 
@@ -218,7 +218,7 @@ ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)
 ax.set_xscale('log')
 ax.set_yscale('log')
-ax.set_ylabel('$i_{chr2}$ [$\mu$A/$cm^2$]')
+ax.set_ylabel('$i_{chr2}$ [mA/$cm^2$]')
 ax.set_xlabel('Irr [mW/$mm^2$]')
 ax.set_yticks([1e-5, 1e-3, 1e-1])
 if save_figs:
