@@ -35,6 +35,7 @@ if __name__ == '__main__':
     data = stp.simParams(myinput)
     if len(sys.argv) > 3 and len(sys.argv) % 2 == 0:
         import ast
+        print({sys.argv[i+2]: ast.literal_eval(sys.argv[i+3]) for i in range(len(sys.argv)-2)[::2]})
         gridFieldStimulation(
             myinput, **{sys.argv[i+2]: ast.literal_eval(sys.argv[i+3]) for i in range(len(sys.argv)-2)[::2]})
     elif len(sys.argv) % 2 == 1:

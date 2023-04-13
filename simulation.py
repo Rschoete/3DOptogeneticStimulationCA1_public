@@ -436,7 +436,6 @@ if __name__ == '__main__':
     idx = [0, 1, 2, 3, 5, 7, 9, 11, 13, 14]
     GmaxsIrrpd10 = [[0.2276, 0.4642, 0.5179, 1., 1.1788, 2.1544, 2.6827, 4.6416, 6.1054, 10., 13.895, 21.5443, 31.6228, 46.4159, 100.],
                     [4.0631867e+00, 4.2123000e-01, 3.2767360e-01, 9.7869800e-02, 7.6211500e-02, 3.0885000e-02, 2.2383000e-02, 1.0271300e-02, 6.9475000e-03, 3.5438000e-03, 2.2676000e-03, 1.2831000e-03, 7.7960000e-04, 4.7540000e-04, 1.8280000e-04]]
-    pds = [100, 1000]
     pd = 10
 
     iter = -1
@@ -464,6 +463,7 @@ if __name__ == '__main__':
         # allign axo-somato-dendritic axis with z-axis
         input.cellsopt.init_options.theta = -np.pi/2
         input.cellsopt.init_options.replace_axon = False
+        input.cellsopt.init_options.morphology = "mpg141209_A_idA.asc"
 
         input.stimopt.Ostimparams.filepath = 'Inputs/LightIntensityProfile/constant.txt'
         input.stimopt.Ostimparams.amp = GmaxsIrrpd10[1][idx]*1000
@@ -481,8 +481,6 @@ if __name__ == '__main__':
 
         input, data, cell, Optogxfield, _ = fieldStimulation(
             input, cell=cell, Optogxfield=Optogxfield)
-
-
 # if __name__ == '__main__':
 #     import matplotlib.pyplot as plt
 

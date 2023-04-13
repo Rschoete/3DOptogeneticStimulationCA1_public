@@ -223,6 +223,111 @@ def _main_const_intensity_single_pulse():
             file.write("%s\n" % item)
 
 
+def _main_const_intensity_single_pulse_differentmorpho_pyrs():
+    now = datetime.now()
+    dt_string = now.strftime("%Y%m%d")
+    folder = './Inputs/SDC%s_constI_diffMorphoPyr/' % dt_string
+    os.makedirs(folder, exist_ok=True)
+    runlist_filenameoptall = folder+'runlistopt'
+
+    inputsoptall = []
+
+    Celltemplates = Cells.NeuronTemplates[:2]
+    morphos = ["mpg141209_A_idA.asc", "mpg141208_B_idA.asc"]
+    # opsinlocs_pyrs = #['soma','axon','all','alldend','apic','basal','apicaltrunk','apicaltrunk_ext','apicaltuft','obliques','apicalnotuft']
+    # ,'alldend','apic','basal','apicalnotuft']
+    opsinlocs_pyrs = ['all', 'soma', 'axon', 'basal', 'alldend', 'apic']
+    opsinlocs_interss = ['all', 'soma', 'alldend', 'axon']
+    Gmaxs = []  # see in loop below
+    Gmaxs_must = list(np.logspace(-1, 1.5, 8))
+    pds = list(np.logspace(-1, 3, 9))
+
+    for cell, morpho in zip(Celltemplates, morphos):
+        if 'pc' in cell.lower():
+            opsinlocs = opsinlocs_pyrs
+        else:
+            opsinlocs = opsinlocs_interss
+        for opsinloc in opsinlocs:
+            if opsinloc in ['soma', 'axon']:
+                Gmaxs = list(
+                    np.unique(list(np.logspace(-2, 1, 10))+Gmaxs_must))
+            else:
+                Gmaxs = list(
+                    np.unique(list(np.logspace(-1, 2, 10))+Gmaxs_must))
+            iter = -1
+            sublist = []
+            for Gmax in Gmaxs:
+                iter += 1
+
+                filenameopt = folder+f'input{cell}_{opsinloc}_{iter}.json'
+                inputsoptall.append(filenameopt)
+                sublist.append(filenameopt)
+
+                input = stp.simParams({'test_flag': False, 'save_data_flag': True,
+                                      'save_input_flag': True, 'save_flag': True, 'plot_flag': False})
+
+                input.resultsFolder = '/SDC_constI_diffMorphoPyr/' + \
+                    f'{cell}_{opsinloc}_{iter}'
+                input.subfolderSuffix = ''
+
+                input.duration = 100
+                input.v0 = -70
+
+                input.stimopt.stim_type = ['Optogxstim']
+                input.simulationType = ['SD_Optogenx']
+
+                input.cellsopt.neurontemplate = cell
+
+                input.cellsopt.opsin_options.opsinlocations = opsinloc
+                input.cellsopt.opsin_options.Gmax_total = Gmax  # uS
+                input.cellsopt.opsin_options.distribution = f'distribution = lambda x: {1}'
+                # allign axo-somato-dendritic axis with z-axis
+                input.cellsopt.init_options.theta = -np.pi/2
+                input.cellsopt.init_options.replace_axon = False
+                input.cellsopt.init_options.morphology = morpho
+
+                input.stimopt.Ostimparams.filepath = 'Inputs/LightIntensityProfile/constant.txt'
+                input.stimopt.Ostimparams.amp = 1/3*10**5
+                input.stimopt.Ostimparams.delay = 100
+                input.stimopt.Ostimparams.pulseType = 'singleSquarePulse'
+                input.stimopt.Ostimparams.dur = 100
+
+                input.analysesopt.SDOptogenx.options['simdur'] = 500
+                input.analysesopt.SDOptogenx.options['delay'] = 100
+                input.analysesopt.SDOptogenx.options['vinit'] = -70
+                input.analysesopt.SDOptogenx.options['n_iters'] = 7
+                input.analysesopt.SDOptogenx.options['verbose'] = False
+                input.analysesopt.SDOptogenx.startamp = 1000
+                input.analysesopt.SDOptogenx.durs = pds
+                input.analysesopt.SDOptogenx.nr_pulseOI = 1
+                input.analysesopt.SDOptogenx.record_iOptogenx = 'chr2h134r'
+
+                input.analysesopt.recordSuccesRatio = False
+                input.analysesopt.sec_plot_flag = False
+                input.analysesopt.save_traces = False
+                input.analysesopt.save_rasterplot = False
+                input.analysesopt.save_SDplot = False
+                input.analysesopt.save_shapeplots = False
+                input.analysesopt.save_VTAplot = False
+
+                with open(filenameopt, 'w') as file:
+                    json.dump(input.todict(False), file,
+                              indent=4, cls=MyEncoder)
+
+            with open(folder+'sublist'+cell+opsinloc+'.csv', 'w') as file:
+                file.write('inputfilename\n')
+                for item in sublist:
+                    file.write("%s\n" % item)
+
+    with open(runlist_filenameoptall+'.txt', 'w') as file:
+        for item in inputsoptall:
+            file.write("%s\n" % item)
+    with open(runlist_filenameoptall+'.csv', 'w') as file:
+        file.write('inputfilename\n')
+        for item in inputsoptall:
+            file.write("%s\n" % item)
+
+
 def _main_fixed_field_different_setups_xposssplit():
     now = datetime.now()
     dt_string = now.strftime("%Y%m%d")
@@ -772,6 +877,6 @@ def _main_EET_multicells_allparams_pitchcelltypesplit_xposssplit():
 
 
 if __name__ == '__main__':
-    _main_EET_multicells_allparams_pitchcelltypesplit_xposssplit()
+    _main_const_intensity_single_pulse_differentmorpho_pyrs()
     # _main_const_intensity_single_pulse()
     print('finish')

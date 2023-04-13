@@ -35,6 +35,19 @@ morphocelltype = {
 }
 NeuronTemplates = ['CA1_PC_cAC_sig5', 'CA1_PC_cAC_sig6', 'bACnoljp8',
                    'bACnoljp7', 'cNACnoljp1', 'cNACnoljp2', 'INT_cAC_noljp4', 'INT_cAC_noljp3']
+mapMorphotoList = {
+    "mpg141208_B_idA": {
+        'apicalTrunk': [f'apic[{i}]' for i in [0, 6, 8, 10, 12, 18, 20, 24, 26, 30, 46, 60, 62, 66, 68, 70]],
+        'apicalTrunk_ext': [f'apic[{i}]' for i in [31, 33, 39, 47, 51]],
+        'apicalTuft': [f'apic[{i}]' for i in [40, 41, 42, 43, 44, 45, 52, 53, 54, 55, 56, 57, 58, 59, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88]],
+        'obliques': [f'apic[{i}]' for i in [1, 2, 3, 4, 5, 7, 9, 11, 13, 14, 15, 16, 17, 19, 21, 22, 23, 25, 27, 28, 29, 32, 34, 35, 36, 37, 38, 48, 49, 50, 61, 63, 64, 65, 67, 69]]
+    },
+    "mpg141209_A_idA": {
+        'apicalTrunk': [f'apic[{i}]' for i in [0, 8, 9, 11, 13, 19, 21, 23, 27, 31, 35]],
+        'apicalTrunk_ext': [f'apic[{i}]' for i in [36, 40, 53, 61]],
+        'apicalTuft': [f'apic[{i}]' for i in [37, 38, 39, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67]],
+        'obliques': [f'apic[{i}]' for i in [1, 2, 3, 4, 5, 6, 7, 10, 12, 14, 15, 16, 17, 18, 20, 22, 24, 25, 26, 28, 29, 30, 32, 33, 34, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78]]
+    }}
 
 
 class NeuronTemplate:
@@ -53,10 +66,12 @@ class NeuronTemplate:
     * phi = 0: initial rotation around z-axis (call rotate_Cell method with init_rotation true to apply rotation)
     * theta = 0: initial rotation around the y-axis (call rotate_Cell method with init_rotation true to apply rotation) order is first around Rz*Ry*r
     * movesomatoorigin = True: flag that is used in all child classes
+    * allign_axis = True: when loaded allign somatodendritic axis to x-axis
+    * morphology:str = None: load other morphology than default coupled to cell.
     * **kwargs not used: add so no error when transfering kwargs from child classes
     '''
 
-    def __init__(self, templatepath, templatename, replace_axon=True, morphologylocation='./Model/morphologies', ID=0, ty=0, col=0, phi=0, theta=0, psi=0, movesomatoorigin=True, allign_axis=True, **kwargs):
+    def __init__(self, templatepath, templatename, replace_axon=True, morphologylocation='./Model/morphologies', ID=0, ty=0, col=0, phi=0, theta=0, psi=0, movesomatoorigin=True, allign_axis=True, morphology=None, **kwargs):
         self.templatepath = templatepath
         self.templatename = templatename
         self.morphologylocation = morphologylocation
@@ -68,14 +83,20 @@ class NeuronTemplate:
         self.phi = phi
         self.theta = theta
         self.psi = psi
+        self.input_morphology = morphology
         self.movesomatoorigin = movesomatoorigin
         self.allign_axis = allign_axis
 
     def load_template(self):
         self.assign_MorphandCelltype()  # read morphology and add corresponding cell type
         h.load_file(self.templatepath)  # Load cell info
-        self.template = getattr(h, self.templatename)(
-            self.replace_axon, self.morphologylocation)  # initialize cell
+        if self.input_morphology is not None:
+            self.morphology = self.input_morphology.rsplit('.', 1)[0]
+            self.template = getattr(h, self.templatename)(
+                self.replace_axon, self.morphologylocation, self.input_morphology)  # initialize cell with certain morpho
+        else:
+            self.template = getattr(h, self.templatename)(
+                self.replace_axon, self.morphologylocation)  # initialize cell with default morpho
         try:
             # try to create allsec list (used in many methods)
             self.allsec = []
@@ -118,7 +139,7 @@ class NeuronTemplate:
         secpos = self.gather_secpos()
         if exclude_axon:
             secpos = secpos.loc[~secpos.index.str.contains('axon')]
-        #secpos = secpos-secpos.mean()
+        # secpos = secpos-secpos.mean()
         cov_mat = secpos.cov()
         eig_values, eig_vectors = np.linalg.eig(cov_mat)
         e_indices = np.argmax(eig_values)
@@ -306,7 +327,7 @@ class NeuronTemplate:
         for k, v in colorkeyval.items():
             ax.plot(np.nan, np.nan, np.nan, label=k, color=v)
         ax.legend(frameon=False)
-        #ax.view_init(elev=0, azim=0)
+        # ax.view_init(elev=0, azim=0)
         return ax
 
     def check_pointers(self, autoset=False):
@@ -430,20 +451,15 @@ class CA1_PC_cAC_sig5(NeuronTemplate):
         self.alldend = []
         self.apicalTrunk = []
         self.basaldend = []
-        apicalTrunk = ['apic[0]', 'apic[6]', 'apic[8]', 'apic[10]', 'apic[12]', 'apic[18]', 'apic[20]', 'apic[24]',
-                       'apic[26]', 'apic[30]', 'apic[46]', 'apic[60]', 'apic[62]', 'apic[66]', 'apic[68]', 'apic[70]']
-
         self.apicalTrunk_ext = []
-        apicalTrunk_ext = apicalTrunk + \
-            ['apic[31]', 'apic[33]', 'apic[39]', 'apic[47]', 'apic[51]']
-
         self.apicalTuft = []
-        apicalTuft = ['apic[40]', 'apic[41]', 'apic[42]', 'apic[43]', 'apic[44]', 'apic[45]', 'apic[52]', 'apic[53]', 'apic[54]', 'apic[55]', 'apic[56]', 'apic[57]', 'apic[58]', 'apic[59]', 'apic[71]',
-                      'apic[72]', 'apic[73]', 'apic[74]', 'apic[75]', 'apic[76]', 'apic[77]', 'apic[78]', 'apic[79]', 'apic[80]', 'apic[81]', 'apic[82]', 'apic[83]', 'apic[84]', 'apic[85]', 'apic[86]', 'apic[87]', 'apic[88]']
-
         self.apical_obliques = []
-        obliques = ['apic[1]', 'apic[2]', 'apic[3]', 'apic[4]', 'apic[5]', 'apic[7]', 'apic[9]', 'apic[11]', 'apic[13]', 'apic[14]', 'apic[15]', 'apic[16]', 'apic[17]', 'apic[19]', 'apic[21]', 'apic[22]', 'apic[23]', 'apic[25]',
-                    'apic[27]', 'apic[28]', 'apic[29]', 'apic[32]', 'apic[34]', 'apic[35]', 'apic[36]', 'apic[37]', 'apic[38]', 'apic[48]', 'apic[49]', 'apic[50]', 'apic[61]', 'apic[63]', 'apic[64]', 'apic[65]', 'apic[67]', 'apic[69]']
+
+        apicalTrunk = mapMorphotoList[self.morphology]['apicalTrunk']
+        apicalTrunk_ext = apicalTrunk + \
+            mapMorphotoList[self.morphology]['apicalTrunk_ext']
+        apicalTuft = mapMorphotoList[self.morphology]['apicalTuft']
+        obliques = mapMorphotoList[self.morphology]['obliques']
 
         for x in self.all:
             self.allsec.append(x)
@@ -488,19 +504,15 @@ class CA1_PC_cAC_sig6(NeuronTemplate):
         self.alldend = []
         self.apicalTrunk = []
         self.basaldend = []
-        apicalTrunk = [f'apic[{i}]' for i in [
-            0, 8, 9, 11, 13, 19, 21, 23, 27, 31, 35]]
-
         self.apicalTrunk_ext = []
-        apicalTrunk_ext = apicalTrunk+[f'apic[{i}]' for i in [36, 40, 53, 61]]
-
         self.apicalTuft = []
-        apicalTuft = [f'apic[{i}]' for i in [37, 38, 39, 41, 42, 43, 44, 45, 46, 47,
-                                             48, 49, 50, 51, 52, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67]]
-
         self.apical_obliques = []
-        obliques = [f'apic[{i}]' for i in [1, 2, 3, 4, 5, 6, 7, 10, 12, 14, 15, 16, 17, 18, 20,
-                                           22, 24, 25, 26, 28, 29, 30, 32, 33, 34, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78]]
+
+        apicalTrunk = mapMorphotoList[self.morphology]['apicalTrunk']
+        apicalTrunk_ext = apicalTrunk + \
+            mapMorphotoList[self.morphology]['apicalTrunk_ext']
+        apicalTuft = mapMorphotoList[self.morphology]['apicalTuft']
+        obliques = mapMorphotoList[self.morphology]['obliques']
 
         for x in self.all:
             self.allsec.append(x)
@@ -544,32 +556,15 @@ class bACnoljp8(NeuronTemplate):
         self.allsec = []
         self.alldend = []
         self.apicalTrunk = []
-        apicalTrunk = [f'apic[{i}]' for i in [
-            0, 8, 9, 11, 13, 19, 21, 23, 27, 31, 35]]
-
         self.apicalTrunk_ext = []
-        apicalTrunk_ext = apicalTrunk+[f'apic[{i}]' for i in [36, 40, 53, 61]]
-
         self.apicalTuft = []
-        apicalTuft = [f'apic[{i}]' for i in [37, 38, 39, 41, 42, 43, 44, 45, 46, 47,
-                                             48, 49, 50, 51, 52, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67]]
 
         self.apical_obliques = []
-        obliques = [f'apic[{i}]' for i in [1, 2, 3, 4, 5, 6, 7, 10, 12, 14, 15, 16, 17, 18, 20,
-                                           22, 24, 25, 26, 28, 29, 30, 32, 33, 34, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78]]
 
         for x in self.all:
             self.allsec.append(x)
             if (not 'soma' in str(x)) and (not 'axon' in str(x)):
                 self.alldend.append(x)
-            if any([y in str(x) for y in apicalTrunk]):
-                self.apicalTrunk.append(x)
-            if any([y in str(x) for y in apicalTrunk_ext]):
-                self.apicalTrunk_ext.append(x)
-            if any([y in str(x) for y in apicalTuft]):
-                self.apicalTuft.append(x)
-            if any([y in str(x) for y in obliques]):
-                self.apical_obliques.append(x)
 
 
 class cNACnoljp1(NeuronTemplate):
@@ -598,32 +593,14 @@ class cNACnoljp1(NeuronTemplate):
         self.allsec = []
         self.alldend = []
         self.apicalTrunk = []
-        apicalTrunk = [f'apic[{i}]' for i in [
-            0, 8, 9, 11, 13, 19, 21, 23, 27, 31, 35]]
-
         self.apicalTrunk_ext = []
-        apicalTrunk_ext = apicalTrunk+[f'apic[{i}]' for i in [36, 40, 53, 61]]
-
         self.apicalTuft = []
-        apicalTuft = [f'apic[{i}]' for i in [37, 38, 39, 41, 42, 43, 44, 45, 46, 47,
-                                             48, 49, 50, 51, 52, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67]]
-
         self.apical_obliques = []
-        obliques = [f'apic[{i}]' for i in [1, 2, 3, 4, 5, 6, 7, 10, 12, 14, 15, 16, 17, 18, 20,
-                                           22, 24, 25, 26, 28, 29, 30, 32, 33, 34, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78]]
 
         for x in self.all:
             self.allsec.append(x)
             if (not 'soma' in str(x)) and (not 'axon' in str(x)):
                 self.alldend.append(x)
-            if any([y in str(x) for y in apicalTrunk]):
-                self.apicalTrunk.append(x)
-            if any([y in str(x) for y in apicalTrunk_ext]):
-                self.apicalTrunk_ext.append(x)
-            if any([y in str(x) for y in apicalTuft]):
-                self.apicalTuft.append(x)
-            if any([y in str(x) for y in obliques]):
-                self.apical_obliques.append(x)
 
 
 class bACnoljp7(NeuronTemplate):
@@ -652,32 +629,14 @@ class bACnoljp7(NeuronTemplate):
         self.allsec = []
         self.alldend = []
         self.apicalTrunk = []
-        apicalTrunk = [f'apic[{i}]' for i in [
-            0, 8, 9, 11, 13, 19, 21, 23, 27, 31, 35]]
-
         self.apicalTrunk_ext = []
-        apicalTrunk_ext = apicalTrunk+[f'apic[{i}]' for i in [36, 40, 53, 61]]
-
         self.apicalTuft = []
-        apicalTuft = [f'apic[{i}]' for i in [37, 38, 39, 41, 42, 43, 44, 45, 46, 47,
-                                             48, 49, 50, 51, 52, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67]]
-
         self.apical_obliques = []
-        obliques = [f'apic[{i}]' for i in [1, 2, 3, 4, 5, 6, 7, 10, 12, 14, 15, 16, 17, 18, 20,
-                                           22, 24, 25, 26, 28, 29, 30, 32, 33, 34, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78]]
 
         for x in self.all:
             self.allsec.append(x)
             if (not 'soma' in str(x)) and (not 'axon' in str(x)):
                 self.alldend.append(x)
-            if any([y in str(x) for y in apicalTrunk]):
-                self.apicalTrunk.append(x)
-            if any([y in str(x) for y in apicalTrunk_ext]):
-                self.apicalTrunk_ext.append(x)
-            if any([y in str(x) for y in apicalTuft]):
-                self.apicalTuft.append(x)
-            if any([y in str(x) for y in obliques]):
-                self.apical_obliques.append(x)
 
 
 class cNACnoljp2(NeuronTemplate):
@@ -706,32 +665,14 @@ class cNACnoljp2(NeuronTemplate):
         self.allsec = []
         self.alldend = []
         self.apicalTrunk = []
-        apicalTrunk = [f'apic[{i}]' for i in [
-            0, 8, 9, 11, 13, 19, 21, 23, 27, 31, 35]]
-
         self.apicalTrunk_ext = []
-        apicalTrunk_ext = apicalTrunk+[f'apic[{i}]' for i in [36, 40, 53, 61]]
-
         self.apicalTuft = []
-        apicalTuft = [f'apic[{i}]' for i in [37, 38, 39, 41, 42, 43, 44, 45, 46, 47,
-                                             48, 49, 50, 51, 52, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67]]
-
         self.apical_obliques = []
-        obliques = [f'apic[{i}]' for i in [1, 2, 3, 4, 5, 6, 7, 10, 12, 14, 15, 16, 17, 18, 20,
-                                           22, 24, 25, 26, 28, 29, 30, 32, 33, 34, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78]]
 
         for x in self.all:
             self.allsec.append(x)
             if (not 'soma' in str(x)) and (not 'axon' in str(x)):
                 self.alldend.append(x)
-            if any([y in str(x) for y in apicalTrunk]):
-                self.apicalTrunk.append(x)
-            if any([y in str(x) for y in apicalTrunk_ext]):
-                self.apicalTrunk_ext.append(x)
-            if any([y in str(x) for y in apicalTuft]):
-                self.apicalTuft.append(x)
-            if any([y in str(x) for y in obliques]):
-                self.apical_obliques.append(x)
 
 
 class INT_cAC_noljp4(NeuronTemplate):
@@ -760,32 +701,14 @@ class INT_cAC_noljp4(NeuronTemplate):
         self.allsec = []
         self.alldend = []
         self.apicalTrunk = []
-        apicalTrunk = [f'apic[{i}]' for i in [
-            0, 8, 9, 11, 13, 19, 21, 23, 27, 31, 35]]
-
         self.apicalTrunk_ext = []
-        apicalTrunk_ext = apicalTrunk+[f'apic[{i}]' for i in [36, 40, 53, 61]]
-
         self.apicalTuft = []
-        apicalTuft = [f'apic[{i}]' for i in [37, 38, 39, 41, 42, 43, 44, 45, 46, 47,
-                                             48, 49, 50, 51, 52, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67]]
-
         self.apical_obliques = []
-        obliques = [f'apic[{i}]' for i in [1, 2, 3, 4, 5, 6, 7, 10, 12, 14, 15, 16, 17, 18, 20,
-                                           22, 24, 25, 26, 28, 29, 30, 32, 33, 34, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78]]
 
         for x in self.all:
             self.allsec.append(x)
             if (not 'soma' in str(x)) and (not 'axon' in str(x)):
                 self.alldend.append(x)
-            if any([y in str(x) for y in apicalTrunk]):
-                self.apicalTrunk.append(x)
-            if any([y in str(x) for y in apicalTrunk_ext]):
-                self.apicalTrunk_ext.append(x)
-            if any([y in str(x) for y in apicalTuft]):
-                self.apicalTuft.append(x)
-            if any([y in str(x) for y in obliques]):
-                self.apical_obliques.append(x)
 
 
 class INT_cAC_noljp3(NeuronTemplate):
@@ -814,37 +737,19 @@ class INT_cAC_noljp3(NeuronTemplate):
         self.allsec = []
         self.alldend = []
         self.apicalTrunk = []
-        apicalTrunk = [f'apic[{i}]' for i in [
-            0, 8, 9, 11, 13, 19, 21, 23, 27, 31, 35]]
-
         self.apicalTrunk_ext = []
-        apicalTrunk_ext = apicalTrunk+[f'apic[{i}]' for i in [36, 40, 53, 61]]
-
         self.apicalTuft = []
-        apicalTuft = [f'apic[{i}]' for i in [37, 38, 39, 41, 42, 43, 44, 45, 46, 47,
-                                             48, 49, 50, 51, 52, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67]]
-
         self.apical_obliques = []
-        obliques = [f'apic[{i}]' for i in [1, 2, 3, 4, 5, 6, 7, 10, 12, 14, 15, 16, 17, 18, 20,
-                                           22, 24, 25, 26, 28, 29, 30, 32, 33, 34, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78]]
 
         for x in self.all:
             self.allsec.append(x)
             if (not 'soma' in str(x)) and (not 'axon' in str(x)):
                 self.alldend.append(x)
-            if any([y in str(x) for y in apicalTrunk]):
-                self.apicalTrunk.append(x)
-            if any([y in str(x) for y in apicalTrunk_ext]):
-                self.apicalTrunk_ext.append(x)
-            if any([y in str(x) for y in apicalTuft]):
-                self.apicalTuft.append(x)
-            if any([y in str(x) for y in obliques]):
-                self.apical_obliques.append(x)
 
 
 def _colorsecs(mylist, seclist, cell):
     # function used in debug mode to color sections -> identify which sections part of seclist
-    #mylist =  ['apic[0]','apic[6]','apic[8]','apic[10]','apic[12]','apic[18]','apic[20]','apic[24]','apic[26]','apic[30]','apic[46]','apic[60]','apic[62]','apic[66]','apic[68]','apic[70]'] + ['apic[31]','apic[33]','apic[39]','apic[47]','apic[51]']
+    # mylist =  ['apic[0]','apic[6]','apic[8]','apic[10]','apic[12]','apic[18]','apic[20]','apic[24]','apic[26]','apic[30]','apic[46]','apic[60]','apic[62]','apic[66]','apic[68]','apic[70]'] + ['apic[31]','apic[33]','apic[39]','apic[47]','apic[51]']
     # _colorsecs(mylist,'apical_obliques',cell)
     plt.close()
     setattr(cell, seclist, [])
@@ -942,7 +847,8 @@ if __name__ == '__main__':
     dt = 0.025  # ms
 
     hShape_flag = False
-    cell = locals()[NeuronTemplates[0]](replace_axon=False)
+    cell = locals()[NeuronTemplates[0]](
+        replace_axon=False, morphology="mpg141209_A_idA.asc")
     cell.insertOptogenetics(cell.alldend)
 
     if not hShape_flag:
@@ -958,7 +864,7 @@ if __name__ == '__main__':
     print(max(secpos['x'])/min(secpos['x']))
     # by default included
     cell.rotate_Cell(theta=0)
-    #cell.move_Cell([-1000, 0, -700])
+    # cell.move_Cell([-1000, 0, -700])
 
     # gather new sec positions
     secpos2 = cell.gather_secpos()
@@ -993,7 +899,7 @@ if __name__ == '__main__':
     xX, xY, xZ = np.meshgrid(np.linspace(xlims[0], xlims[1], nx), np.linspace(
         ylims[0], ylims[1], ny), np.linspace(zlims[0], zlims[1], nz), indexing='ij')
     data = np.array((xX.ravel(), xY.ravel(), xZ.ravel())).T
-    #myfun = lambda x,y,z: x**2+y**2+(z-2.5)
+    # myfun = lambda x,y,z: x**2+y**2+(z-2.5)
     myfun = np.vectorize(lambda x, y, z, a: 1 if ((z >= 0 and z <= 10) and (x**2+y**2) < 100**2) else (10/z)**(2/a) if (z > 10 and (x**2+y**2) < 100**2)
                          else ((10/z)**(2/a)*100**(2/a)/(x**2+y**2)**(1/a)) if z > 10 else ((1/(z+10))**(2/a)*100**(2/a)/(x**2+y**2)**(1/a)) if (z > 0 and z <= 10) else 1e-6)
     field = np.hstack(
@@ -1036,7 +942,7 @@ if __name__ == '__main__':
     a, b = (-1000 - 0)/scale, (1000 - 0)/scale
     source = [300, 300, 300]
     rv = truncnorm(a, b, 0, scale)
-    #distribution = lambda seg_xyz: 5*rv.pdf(np.linalg.norm(np.array(seg_xyz)-source))/rv.pdf(0)
+    # distribution = lambda seg_xyz: 5*rv.pdf(np.linalg.norm(np.array(seg_xyz)-source))/rv.pdf(0)
     def distribution(x): return 5
     seglist, valueschr2 = cell.distribute_mechvalue(distribution)
     swv, swov = cell.updateMechValue(
