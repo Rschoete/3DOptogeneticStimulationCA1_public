@@ -63,8 +63,8 @@ def _recollect_data_df(*, filepath, result, all_columns, cell_init_options, sett
             myinput = json.load(f)
 
         # store global input info
-        cell_init_dict = {'neurontemplate': myinput['settings']['cellsopt']['neurontemplate'], **{key: myinput['settings']['cellsopt']['init_options'][key.rsplit(
-            '_', 1)[0]] for key in cell_init_options if key != 'neurontemplate'}}
+        cell_init_dict = {'neurontemplate': myinput['settings']['cellsopt']['neurontemplate'], **{key: myinput['settings']['cellsopt']['init_options'].get(key.rsplit(
+            '_', 1)[0]) for key in cell_init_options if key != 'neurontemplate'}}
         settings_dict = {
             key: myinput['settings'][key] for key in settings_options}
         opsin_dict = {**{opsin_options[0]: myinput['settings']['cellsopt']['opsin_options'][opsin_options[0]+'_total']}, **{
@@ -104,11 +104,12 @@ if __name__ == '__main__':
     recollect = True
 
     # Load data
-    filepath = './Results/SDC/SDC_constI_v2'
+    filepath = 'Results/SDC/SDC_constI_v2'  # './Results/SDC/SDC_constI_v2'
     filename = 'all_data.csv'
 
     # list parameters of interest
-    cell_init_options = ['phi_0', 'theta_0', 'psi_0', 'neurontemplate']
+    cell_init_options = ['phi_0', 'theta_0',
+                         'psi_0', 'neurontemplate', 'morphology']
     settings_options = ['seed', 'celsius', 'dt']
     opsin_options = ['Gmax', 'distribution', 'opsinmech',
                      'distribution_method', 'opsinlocations']
