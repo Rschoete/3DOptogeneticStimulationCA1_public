@@ -28,14 +28,14 @@ opsinLocation_map = {'pc': {'1000': 'soma', '0100': 'axon', '0010': 'apic',
 
 def load_data_df(*, filepath, filename, recollect, result, all_columns, cell_init_options, settings_options, opsin_options, field_options, fill_missing_xyzpositions=True, save_recollect=True, savename=None):
     if recollect:
-        master_df = _recollect_data_df(filepath=filepath, fill_missing_xyzpositions=fill_missing_xyzpositions, result=result, all_columns=all_columns, cell_init_options=cell_init_options,
+        master_df = _recollect_data_df(filepath=filepath, result=result, all_columns=all_columns, cell_init_options=cell_init_options,
                                        settings_options=settings_options, opsin_options=opsin_options, field_options=field_options, savename=savename, save_recollect=save_recollect)
     else:
         master_df = pd.read_csv(os.path.join(filepath, filename), index_col=0)
     return master_df
 
 
-def _recollect_data_df(*, filepath, fill_missing_xyzpositions, result, all_columns, cell_init_options, settings_options, opsin_options, field_options, savename, save_recollect):
+def _recollect_data_df(*, filepath, result, all_columns, cell_init_options, settings_options, opsin_options, field_options, savename, save_recollect):
     if savename is None:
         savename = os.path.join(filepath, 'all_data.csv')
     if os.path.exists(savename):
@@ -43,11 +43,11 @@ def _recollect_data_df(*, filepath, fill_missing_xyzpositions, result, all_colum
 
     # list all data and input file locations
     alldata_files = [x for x in glob.glob(os.path.join(
-        filepath, '**/data.json'), recursive=True) if not 'ToConcat' in x]
+        filepath, '**/data.json'), recursive=True) if not '_202303' in x]
     allinput_files = [x for x in glob.glob(os.path.join(
-        filepath, '**/input.json'), recursive=True) if not 'ToConcat' in x]
+        filepath, '**/input.json'), recursive=True) if not '_202303' in x]
     dir_list = [x for x in glob.glob(os.path.join(
-        filepath, '*')) if os.path.isdir(x) and not 'ToConcat' in x]
+        filepath, '*')) if os.path.isdir(x) and not '_202303' in x]
     print(
         f"result files: {len(alldata_files)}, input files: {len(allinput_files)}, directories: {len(dir_list)}")
 
@@ -63,8 +63,8 @@ def _recollect_data_df(*, filepath, fill_missing_xyzpositions, result, all_colum
             myinput = json.load(f)
 
         # store global input info
-        cell_init_dict = {'neurontemplate': myinput['settings']['cellsopt']['neurontemplate'], **{key: myinput['settings']['cellsopt']['init_options'][key.rsplit(
-            '_', 1)[0]] for key in cell_init_options if key != 'neurontemplate'}}
+        cell_init_dict = {'neurontemplate': myinput['settings']['cellsopt']['neurontemplate'], **{key: myinput['settings']['cellsopt']['init_options'].get(key.rsplit(
+            '_', 1)[0]) for key in cell_init_options if key != 'neurontemplate'}}
         settings_dict = {
             key: myinput['settings'][key] for key in settings_options}
         opsin_dict = {**{opsin_options[0]: myinput['settings']['cellsopt']['opsin_options'][opsin_options[0]+'_total']}, **{
@@ -102,14 +102,14 @@ def _recollect_data_df(*, filepath, fill_missing_xyzpositions, result, all_colum
 
 if __name__ == '__main__':
     recollect = True
-    fill_missing_xyzpositions = False
 
     # Load data
-    filepath = './Results/SDC/SDC_constI'
+    filepath = 'Results/SDC/SDC_constI_v2'  # './Results/SDC/SDC_constI_v2'
     filename = 'all_data.csv'
 
     # list parameters of interest
-    cell_init_options = ['phi_0', 'theta_0', 'psi_0', 'neurontemplate']
+    cell_init_options = ['phi_0', 'theta_0',
+                         'psi_0', 'neurontemplate', 'morphology']
     settings_options = ['seed', 'celsius', 'dt']
     opsin_options = ['Gmax', 'distribution', 'opsinmech',
                      'distribution_method', 'opsinlocations']
@@ -119,7 +119,7 @@ if __name__ == '__main__':
         cell_init_options+settings_options
 
     master_df = load_data_df(filepath=filepath, filename=filename, recollect=recollect, result=result, all_columns=all_columns, cell_init_options=cell_init_options,
-                             settings_options=settings_options, opsin_options=opsin_options, field_options=field_options, fill_missing_xyzpositions=fill_missing_xyzpositions, save_recollect=True, savename=None)
+                             settings_options=settings_options, opsin_options=opsin_options, field_options=field_options, save_recollect=True, savename=None)
 
     unique_values_columns = {
         key: master_df[key].unique() for key in all_columns}

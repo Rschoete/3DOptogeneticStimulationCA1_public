@@ -98,6 +98,7 @@ class cellsOptions(Dict):
         self.init_options.theta = 0
         self.init_options.psi = 0
         self.init_options.movesomatoorigin = True
+        self.init_options.morphology = None  # if none default morphology is used
 
         # cell transformation options
         # !Note!: currently in code first rotation then movement (with init_options movesomatoorigin true soma is at origin)
