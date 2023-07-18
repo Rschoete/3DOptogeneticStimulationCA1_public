@@ -33,7 +33,7 @@ if not 'hShape_flag' in globals():
 morphocelltype = {
     '990803': 'SP_PC', '050921AM2': 'SP_PC', 'mpg141017_a1-2_idC': 'SP_PC', 'mpg141208_B_idA': 'SP_PC', 'mpg141209_A_idA': 'SP_PC', 'mpg141209_B_idA': 'SP_PC', 'mpg141215_A_idA': 'SP_PC', 'mpg141216_A_idA': 'SP_PC', 'mpg141217_A_idB': 'SP_PC', 'mpg150305_A_idB': 'SP_PC', 'oh140521_B0_Rat_idA': 'SP_PC', 'oh140521_B0_Rat_idC': 'SP_PC', 'oh140807_A0_idA': 'SP_PC', 'oh140807_A0_idB': 'SP_PC', 'oh140807_A0_idC': 'SP_PC', 'oh140807_A0_idF': 'SP_PC', 'oh140807_A0_idG': 'SP_PC', 'oh140807_A0_idH': 'SP_PC', 'oh140807_A0_idJ': 'SP_PC', '010710HP2': 'SP_Ivy', '011017HP2': 'SO_OLM', '011023HP2': 'SO_BS', '011127HP1': 'SLM_PPA', '031031AM1': 'SP_CCKBC', '060314AM2': 'SP_PVBC', '970509HP2': 'SO_Tri', '970627BHP1': 'SP_PVBC', '970717D': 'SP_Ivy', '970911C': 'SP_AA', '971114B': 'SO_Tri', '980120A': 'SO_BP', '980513B': 'SP_BS', '990111HP2': 'SP_PVBC', '990611HP2': 'SR_SCA', '990827IN5HP3': 'SR_IS1',
 }
-NeuronTemplates = ['CA1_PC_cAC_sig5', 'CA1_PC_cAC_sig6', 'bACnoljp8',
+NeuronTemplates = ['CA1_PC_cAC_sig5', 'CA1_PC_cAC_sig6', 'CA1_PC_migliore', 'cNACnoljp_migliore', 'bACnoljp8',
                    'bACnoljp7', 'cNACnoljp1', 'cNACnoljp2', 'INT_cAC_noljp4', 'INT_cAC_noljp3']
 mapMorphotoList = {
     "mpg141208_B_idA": {
@@ -47,7 +47,75 @@ mapMorphotoList = {
         'apicalTrunk_ext': [f'apic[{i}]' for i in [36, 40, 53, 61]],
         'apicalTuft': [f'apic[{i}]' for i in [37, 38, 39, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67]],
         'obliques': [f'apic[{i}]' for i in [1, 2, 3, 4, 5, 6, 7, 10, 12, 14, 15, 16, 17, 18, 20, 22, 24, 25, 26, 28, 29, 30, 32, 33, 34, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78]]
-    }}
+    },
+    "mpg141017_a1-2_idC": {
+        'apicalTrunk': [f'apic[{i}]' for i in np.concatenate([[0, 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,105,106,107],np.arange(115,120),np.arange(121,126),[127]])],
+        'apicalTrunk_ext': [f'apic[{i}]' for i in []],
+        'apicalTuft': [f'apic[{i}]' for i in np.concatenate([np.arange(17,39),np.arange(128,150),[155]])],
+        'obliques': [f'apic[{i}]' for i in np.concatenate([np.arange(39,105),np.arange(108,115),[120,126],np.arange(150,155),np.arange(156,189)])]
+    },
+    "mpg141216_A_idA":{
+        'apicalTrunk': [f'apic[{i}]' for i in [0,6,8,18,20,24,26,30,31,33,35,46,48,50,52]],
+        'apicalTrunk_ext': [f'apic[{i}]' for i in []],
+        'apicalTuft': [f'apic[{i}]' for i in np.concatenate([[37,38,39,40,41,42,43,44,45],np.arange(54,71)])],
+        'obliques': [f'apic[{i}]' for i in np.concatenate([np.arange(1,6),[7],np.arange(9,18),[19,21,22,23,25,27,28,29,32,34,36,47,49,51,53]])]
+    },
+    'mpg141217_A_idB': {
+        'apicalTrunk': [f'apic[{i}]' for i in np.arange(0,20)],
+        'apicalTrunk_ext': [f'apic[{i}]' for i in []],
+        'apicalTuft': [f'apic[{i}]' for i in np.arange(20,50)],
+        'obliques': [f'apic[{i}]' for i in np.arange(50,89)]
+    },
+    'mpg150305_A_idB': {
+        'apicalTrunk': [f'apic[{i}]' for i in [0,6,22,28,50,54,58,64,70,72,74,76,77,79,81]],
+        'apicalTrunk_ext': [f'apic[{i}]' for i in [82,84,88,90,92,96,115]],
+        'apicalTuft': [f'apic[{i}]' for i in np.concatenate([np.arange(97,115),np.arange(120,128)])],
+        'obliques': [f'apic[{i}]' for i in np.concatenate([np.arange(1,6),np.arange(7,22), np.arange(23,28),np.arange(29,50),[51,52,53,55,56,57,59,60,61,62,63,65,66,67,68,69,71,73,75,78,80,83,85, 86, 87,89,91, 93, 94, 95, 116, 117,118, 119, 128,129,130,131,132]])]
+    },
+    'oh140807_A0_idA': {
+        'apicalTrunk': [f'apic[{i}]' for i in np.concatenate([np.arange(0,15),np.arange(49,64), np.arange(98,109)])],
+        'apicalTrunk_ext': [f'apic[{i}]' for i in []],
+        'apicalTuft': [f'apic[{i}]' for i in np.concatenate([np.arange(15,21), np.arange(64,76), np.arange(109,116)])],
+        'obliques': [f'apic[{i}]' for i in np.concatenate([np.arange(21,49), np.arange(76,98),np.arange(116,147)])]
+    },
+    'oh140807_A0_idB': {
+        'apicalTrunk': [f'apic[{i}]' for i in [0, 1,5,7,11, 15,16,20,24,26,27,29,31,51,52,54,56]],
+        'apicalTrunk_ext': [f'apic[{i}]' for i in []],
+        'apicalTuft': [f'apic[{i}]' for i in np.concatenate([np.arange(33,50), np.arange(57,69)])],
+        'obliques': [f'apic[{i}]' for i in [2,3,4,6,8,9,10,12,13,14,17,18,19,21,22,23,25,28,30,32,50,53,55, 69, 70,71,72,73,74,75,76,77,78]]
+    },
+    'oh140807_A0_idC': {
+        'apicalTrunk': [f'apic[{i}]' for i in [0,6,7,13,19,23,25,27,28,30,32,34,36,40,44,46,56,62,63,67,68,69,71,75,77,81,83,96,102,106,110,112,114,115,119]],
+        'apicalTrunk_ext': [f'apic[{i}]' for i in []],
+        'apicalTuft': [f'apic[{i}]' for i in np.concatenate([np.arange(47,53), np.arange(84,90),np.arange(120,132)])],
+        'obliques': [f'apic[{i}]' for i in np.concatenate([np.arange(1,6),np.arange(8,13),np.arange(14,19),[20,21,22,24,26,29, 31,33,35,37,38,39,41,42,43,45,53, 54,55], np.arange(57,62), [64,65,66,70,72,73,74,76,78,79,80,82,90,91,92,93,94,95,97,98,99,100,101,103,104,105,107,108,109,111,113,116,117,118,132]])]
+    },
+    'oh140807_A0_idF': {
+        'apicalTrunk': [f'apic[{i}]' for i in [0,4,6,15,21,22,26,30,32,38,40,42,44,46,48,50,52,65,69,73,75,77,83,85,87,89,93,95,97]],
+        'apicalTrunk_ext': [f'apic[{i}]' for i in []],
+        'apicalTuft': [f'apic[{i}]' for i in np.concatenate([np.arange(53,65), np.arange(98,112)])],
+        'obliques': [f'apic[{i}]' for i in np.concatenate([[1,2,3,5], np.arange(7,15),np.arange(16,21),[23,24,25,27,28,29,31,33,34,35,36,37,39,41,43,45,47,49,51,66,67,68,70,71,72,74,76,78,79,80,81,82,84,86,88,90,91,92,94,96]])]
+    },
+    'oh140807_A0_idG':{
+        'apicalTrunk': [f'apic[{i}]' for i in [0, 1, 5,9,11,21,25,27,29,33,39,41,47,51,70,76,82,88,90,92,96,100,104,108,110,112,113,115,119,121,123,125,138,140,144,146]],
+        'apicalTrunk_ext': [f'apic[{i}]' for i in []],
+        'apicalTuft': [f'apic[{i}]' for i in np.concatenate([np.arange(53,70),np.arange(126,138),np.arange(147,151)])],
+        'obliques': [f'apic[{i}]' for i in np.concatenate([[2,3,4,6,7,8,10],np.arange(12,21),[22,23,24,26,28,30,31,32,34,35,36,37,38,40,42,43,44,45,46,48,49,50,52,71,72,73,74,75,77,78,79,80,81,83,84,85,86,87,89,91,93,94,95,97,98,99,101,102,103,105,106,107,109,111,114,116,117,118,120,122,124,139,141,142,143,145]])]
+    },
+    'oh140807_A0_idH': {
+        'apicalTrunk': [f'apic[{i}]' for i in [0,2,4,10,14,20,24,32,34,36,38,50,52,58,62,64,66,68,70,72,74,75,77,79,83,85,87,89,100,130,132,138,142]],
+        'apicalTrunk_ext': [f'apic[{i}]' for i in []],
+        'apicalTuft': [f'apic[{i}]' for i in np.concatenate([np.arange(90,100),np.arange(103,130),np.arange(144,151)])],
+        'obliques': [f'apic[{i}]' for i in np.concatenate([[1,3,5,6,7,8,9,11,12,13,15,16,17,18,19,21,22,23,25,26,27,28,29,30,31,33,35,37],np.arange(39,50),[51,53,54,55,56,57,59,60,61,63,65,67,69,71,73,76,78,80,81,82,84,86,88,101,102,131,133,134,135,136,137,139,140,141,143]])]
+    },
+    'oh140807_A0_idJ':{
+        'apicalTrunk': [f'apic[{i}]' for i in [0,4,10,14,24,28,30,34,44,48,50]],
+        'apicalTrunk_ext': [f'apic[{i}]' for i in []],
+        'apicalTuft': [f'apic[{i}]' for i in np.arange(51,71)],
+        'obliques': [f'apic[{i}]' for i in np.concatenate([[1,2,3,5,6,7,8,9,11,12,13], np.arange(15,24),[25,26,27,29,31,32,33],np.arange(35,44),[45,46,47,49]])]
+    }
+    }
+
 
 
 class NeuronTemplate:
@@ -91,11 +159,18 @@ class NeuronTemplate:
         self.assign_MorphandCelltype()  # read morphology and add corresponding cell type
         h.load_file(self.templatepath)  # Load cell info
         if self.input_morphology is not None:
-            self.morphology = self.input_morphology.rsplit('.', 1)[0]
-            self.template = getattr(h, self.templatename)(
-                self.replace_axon, self.morphologylocation, self.input_morphology)  # initialize cell with certain morpho
+            if self.replace_axon == 'na':
+                self.morphology = self.input_morphology.rsplit('.', 1)[0]
+                self.template = getattr(h, self.templatename)(self.morphologylocation, self.input_morphology)
+            else:
+                self.morphology = self.input_morphology.rsplit('.', 1)[0]
+                self.template = getattr(h, self.templatename)(
+                    self.replace_axon, self.morphologylocation, self.input_morphology)  # initialize cell with certain morpho
         else:
-            self.template = getattr(h, self.templatename)(
+            if self.replace_axon == 'na':
+                self.template = getattr(h, self.templatename)(self.morphologylocation)
+            else:
+                self.template = getattr(h, self.templatename)(
                 self.replace_axon, self.morphologylocation)  # initialize cell with default morpho
         try:
             # try to create allsec list (used in many methods)
@@ -249,8 +324,9 @@ class NeuronTemplate:
             data = mmap.mmap(
                 f.fileno(), 0, access=mmap.ACCESS_READ).read().decode("utf-8")
             p = re.compile(r'load_morphology\("morphologies", .*\)')
-            self.morphology = re.findall(
-                r' (".*[(.asc)]")', p.search(data).group(0))[0][1:-5]
+            if p.search(data) is None:
+                p = re.compile(r'load_morphology\(\$s1, ".*\)')
+            self.morphology = re.findall(r' (".*[(.asc)]")', p.search(data).group(0))[0][1:-5]
         self.celltype = morphocelltype[self.morphology]
 
     def moveSomaToOrigin(self):
@@ -327,6 +403,13 @@ class NeuronTemplate:
         for k, v in colorkeyval.items():
             ax.plot(np.nan, np.nan, np.nan, label=k, color=v)
         ax.legend(frameon=False)
+        lims = [ax.get_xlim(), ax.get_ylim(), ax.get_zlim()]
+        lims_centre = [np.mean(x) for x in lims]
+        lims_size = [np.diff(x) for x in lims]
+        max_limsize = np.max(lims_size)
+        ax.set_xlim(lims_centre[0]+max_limsize/2*np.array([-1,1]))
+        ax.set_ylim(lims_centre[1]+max_limsize/2*np.array([-1,1]))
+        ax.set_zlim(lims_centre[2]+max_limsize/2*np.array([-1,1]))
         # ax.view_init(elev=0, azim=0)
         return ax
 
@@ -438,9 +521,9 @@ class CA1_PC_cAC_sig5(NeuronTemplate):
 
     def __str__(self):
         try:
-            return f'compartCell_{self.__class__.__name__}_{self.ID}'
+            return f'{self.__class__.__name__}_{self.ID}'
         except:
-            return 'compartCell%d' % self.ID
+            return f'CA1_PC_cAC_sig5_{self.ID}'
 
     def __repr__(self):
         return self.__str__()
@@ -492,9 +575,9 @@ class CA1_PC_cAC_sig6(NeuronTemplate):
 
     def __str__(self):
         try:
-            return f'compartCell_{self.__class__.__name__}_{self.ID}'
+            return f'{self.__class__.__name__}_{self.ID}'
         except:
-            return 'compartCell%d' % self.ID
+            return f"CA1_PC_cAC_sig6_{self.ID}"
 
     def __repr__(self):
         return self.__str__()
@@ -545,9 +628,9 @@ class bACnoljp8(NeuronTemplate):
 
     def __str__(self):
         try:
-            return f'compartCell_{self.__class__.__name__}_{self.ID}'
+            return f'{self.__class__.__name__}_{self.ID}'
         except:
-            return 'compartCell%d' % self.ID
+            return f"bACnoljp8_{self.ID}"
 
     def __repr__(self):
         return self.__str__()
@@ -582,9 +665,9 @@ class cNACnoljp1(NeuronTemplate):
 
     def __str__(self):
         try:
-            return f'compartCell_{self.__class__.__name__}_{self.ID}'
+            return f'{self.__class__.__name__}_{self.ID}'
         except:
-            return 'compartCell%d' % self.ID
+            return f'cNACnoljp1_{self.ID}'
 
     def __repr__(self):
         return self.__str__()
@@ -618,9 +701,9 @@ class bACnoljp7(NeuronTemplate):
 
     def __str__(self):
         try:
-            return f'compartCell_{self.__class__.__name__}_{self.ID}'
+            return f'{self.__class__.__name__}_{self.ID}'
         except:
-            return 'compartCell%d' % self.ID
+            return f"bACnoljp7_{self.ID}"
 
     def __repr__(self):
         return self.__str__()
@@ -654,9 +737,9 @@ class cNACnoljp2(NeuronTemplate):
 
     def __str__(self):
         try:
-            return f'compartCell_{self.__class__.__name__}_{self.ID}'
+            return f'{self.__class__.__name__}_{self.ID}'
         except:
-            return 'compartCell%d' % self.ID
+            return f"cNACnoljp2_{self.ID}"
 
     def __repr__(self):
         return self.__str__()
@@ -690,9 +773,9 @@ class INT_cAC_noljp4(NeuronTemplate):
 
     def __str__(self):
         try:
-            return f'compartCell_{self.__class__.__name__}_{self.ID}'
+            return f'{self.__class__.__name__}_{self.ID}'
         except:
-            return 'compartCell%d' % self.ID
+            return f"INT_cAC_noljp4_{self.ID}"
 
     def __repr__(self):
         return self.__str__()
@@ -726,9 +809,9 @@ class INT_cAC_noljp3(NeuronTemplate):
 
     def __str__(self):
         try:
-            return f'compartCell_{self.__class__.__name__}_{self.ID}'
+            return f'{self.__class__.__name__}_{self.ID}'
         except:
-            return 'compartCell%d' % self.ID
+            return f"INT_cAC_noljp3_{self.ID}"
 
     def __repr__(self):
         return self.__str__()
@@ -746,11 +829,117 @@ class INT_cAC_noljp3(NeuronTemplate):
             if (not 'soma' in str(x)) and (not 'axon' in str(x)):
                 self.alldend.append(x)
 
+class CA1_PC_migliore(NeuronTemplate):
+    def __init__(self, miglioreModel, hoc_file, **kwargs):
+        self.miglioreModel = miglioreModel
+        self.hoc_file = hoc_file
+        kwargs['replace_axon'] = 'NA'
+        if not 'morphologylocation' in kwargs.keys():
+            kwargs['morphologylocation'] = os.path.join('./Model/MiglioreModels',miglioreModel,'morphology')
+        super().__init__(templatepath=os.path.join('./Model/MiglioreModels',miglioreModel,hoc_file),
+                         templatename='CA1_PC_cAC_sig', **kwargs)
+        self.load_template()
+        self.move_attributes()
+        self.make_lists()
+        self.moveSomaToOrigin()
+        if self.allign_axis:
+            # allign principal axis to x-axis. (principal axis is first principal component from 3D points)
+            self.allign_cell_toaxis()
+        self.rotate_Cell(init_rotation=True)
 
-def _colorsecs(mylist, seclist, cell):
+    def __str__(self):
+        cell = self.hoc_file.split('cell_',1)[-1].split('.hoc')[0]
+        miglioreModel = self.miglioreModel.rsplit('_',1)
+        miglioreModel = f"{miglioreModel[0]}_{miglioreModel[1][:-6]}"
+        try:
+            return f'{self.__class__.__name__}_{miglioreModel}{cell}_{self.ID}'
+        except:
+            return f'CA1_PC_migliore{miglioreModel}{cell}_{self.ID}'
+
+    def __repr__(self):
+        return self.__str__()
+
+    def make_lists(self):
+        self.allsec = []
+        self.alldend = []
+        self.apicalTrunk = []
+        self.basaldend = []
+        self.apicalTrunk_ext = []
+        self.apicalTuft = []
+        self.apical_obliques = []
+
+        apicalTrunk = mapMorphotoList[self.morphology]['apicalTrunk']
+        apicalTrunk_ext = apicalTrunk + \
+            mapMorphotoList[self.morphology]['apicalTrunk_ext']
+        apicalTuft = mapMorphotoList[self.morphology]['apicalTuft']
+        obliques = mapMorphotoList[self.morphology]['obliques']
+
+        for x in self.all:
+            self.allsec.append(x)
+            if (not 'soma' in str(x)) and (not 'axon' in str(x)):
+                self.alldend.append(x)
+            if any([y in str(x) for y in apicalTrunk]):
+                self.apicalTrunk.append(x)
+            if any([y in str(x) for y in apicalTrunk_ext]):
+                self.apicalTrunk_ext.append(x)
+            if any([y in str(x) for y in apicalTuft]):
+                self.apicalTuft.append(x)
+            if any([y in str(x) for y in obliques]):
+                self.apical_obliques.append(x)
+            if 'dend' in str(x):
+                self.basaldend.append(x)
+
+class cNACnoljp_migliore(NeuronTemplate):
+    def __init__(self, miglioreModel, hoc_file, **kwargs):
+        self.miglioreModel = miglioreModel
+        self.hoc_file = hoc_file
+        super().__init__(templatepath=os.path.join('./Model/MiglioreModels',miglioreModel,hoc_file),
+                         templatename='cNACnoljp', **kwargs)
+        self.load_template()
+        self.move_attributes()
+        self.make_lists()
+        self.moveSomaToOrigin()
+        if self.allign_axis:
+            # allign principal axis to x-axis. (principal axis is first principal component from 3D points)
+            self.allign_cell_toaxis()
+        self.rotate_Cell(init_rotation=True)
+
+    def __str__(self):
+        cell = self.hoc_file.split('cell_',1)[-1].split('.hoc')[0]
+        miglioreModel = self.miglioreModel.rsplit('_',1)
+        miglioreModel = f"{miglioreModel[0]}_{miglioreModel[1][:-6]}"
+        try:
+            return f'{self.__class__.__name__}_{miglioreModel}{cell}_{self.ID}'
+        except:
+            return f'cNACnoljp_migliore_{miglioreModel}{cell}_{self.ID}'
+
+    def __repr__(self):
+        return self.__str__()
+
+    def make_lists(self):
+        self.allsec = []
+        self.alldend = []
+        self.apicalTrunk = []
+        self.apicalTrunk_ext = []
+        self.apicalTuft = []
+        self.apical_obliques = []
+
+        for x in self.all:
+            self.allsec.append(x)
+            if (not 'soma' in str(x)) and (not 'axon' in str(x)):
+                self.alldend.append(x)
+
+def _colorsecs(mylist, seclist, cell, ax=None):
     # function used in debug mode to color sections -> identify which sections part of seclist
     # mylist =  ['apic[0]','apic[6]','apic[8]','apic[10]','apic[12]','apic[18]','apic[20]','apic[24]','apic[26]','apic[30]','apic[46]','apic[60]','apic[62]','apic[66]','apic[68]','apic[70]'] + ['apic[31]','apic[33]','apic[39]','apic[47]','apic[51]']
     # _colorsecs(mylist,'apical_obliques',cell)
+    axin = False
+    if ax is not None:
+        lims = [ax.get_xlim(), ax.get_ylim(), ax.get_zlim()]
+        axin = True
+        azim = ax.azim
+        elev = ax.elev
+
     plt.close()
     setattr(cell, seclist, [])
     mylist = [f'apic[{i}]' for i in mylist]
@@ -765,16 +954,26 @@ def _colorsecs(mylist, seclist, cell):
                 cell.tf.append(1)
             else:
                 cell.tf.append(0)
-    fig = plt.figure()
+    fig = plt.figure(figsize=(11,9))
     ax = plt.subplot(111, projection='3d')
     mphv2.shapeplot(h, ax, sections=cell.allsec, cvals=cell.tf, cmap='RdYlBu')
     ax.set_title(cell)
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_zlabel('z')
-    ax.view_init(elev=90, azim=-90)
+    if axin:
+        ax.set_xlim(lims[0])
+        ax.set_ylim(lims[1])
+        ax.set_zlim(lims[2])
+        ax.view_init(elev=elev, azim=azim)
+
+    else:
+        ax.set_xlim([-225, 225])
+        ax.set_ylim([-225, 225])
+        ax.set_zlim([62,388])
+        ax.view_init(elev=0, azim=0)
     ax.grid(visible=None)
-    ax.axis('off')
+    #ax.axis('off')
     plt.show(block=False)
 
 
@@ -822,8 +1021,7 @@ def _print_Gmax_info(cell, mech_names=['gbar', 'gcalbar', 'gcanbar', 'gcatbar', 
     print(
         f'max g: {mechnames[np.argmax(maxgs)]} = {max(maxgs)} S/cm2 @ {maxgsegs[np.argmax(maxgs)]}')
 
-
-if __name__ == '__main__':
+def _run_notMigliore():
     if os.path.exists("./Model/Mods/x86_64/libnrnmech.so"):
         # linux compiled file (on hpc)
         h.nrn_load_dll("./Model/Mods/x86_64/libnrnmech.so")
@@ -1075,3 +1273,28 @@ if __name__ == '__main__':
         ax.legend()
 
     plt.show()
+
+def _run_Migliore_PYR(miglioreModel, hoc_file):
+    mod_path = os.path.join('./Model/MiglioreModels',miglioreModel,'mechanisms')
+    h.nrn_load_dll(os.path.join(mod_path, 'nrnmech.dll'))
+    print("succes load nrnmech.dll")
+    cell = CA1_PC_migliore(miglioreModel=miglioreModel, hoc_file=hoc_file)
+    print(cell)
+    return cell
+
+if __name__ == '__main__':
+    import glob
+    pyrs = glob.glob('./Model/MiglioreModels/CA1_pyr_cACpyr*')
+    miglioreModel = pyrs[13].rsplit('\\',1)[-1]
+    hoc_file = "checkpoints/cell_seed3_0.hoc"
+    cell = _run_Migliore_PYR(miglioreModel, hoc_file)
+    cell.rotate_Cell(theta=-np.pi/2)
+    #_colorsecs([0,], 'apicalTrunk', cell)
+    cell.sec_plot()
+    plt.show(block=False)
+    apicmax = int(max([max([float(x.split('[')[-1][:-1]) for x in v]) for v in mapMorphotoList[cell.morphology].values() if v]))
+    print(miglioreModel, len(cell.apic), apicmax, cell.apic[apicmax])
+    apicalTrunk = [0,4,10,14,24,28,30,34,44,48,50]
+    apicalTrunk_ext = []
+    apicalTuft = [np.arange(51,71)]
+    obliques = [[1,2,3,5,6,7,8,9,11,12,13], np.arange(15,24),[25,26,27,29,31,32,33],np.arange(35,44),[45,46,47,49]]
