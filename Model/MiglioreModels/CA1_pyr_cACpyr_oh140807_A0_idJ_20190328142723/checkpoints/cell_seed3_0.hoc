@@ -45,14 +45,20 @@ proc init(/* args: morphology_dir, morphology_name */) {
 
   forall delete_section()
 
-  if(numarg() >= 2) {
-    load_morphology($s1, $s2)
+  if(numarg() >= 3) {
+    load_morphology($s2, $s3)
+  } else if(numarg() == 2){
+    load_morphology($s2, "oh140807_A0_idJ.asc")
   } else {
-    load_morphology($s1, "oh140807_A0_idJ.asc")
+    load_morphology("morphology", "oh140807_A0_idJ.asc")
   }
 
   geom_nseg()
+  if ( strcmp($s1, "true" ) == 0 ) {
     replace_axon()
+  } else {
+    print "not replacing axon"
+  }
   insertChannel()
   biophys()
 

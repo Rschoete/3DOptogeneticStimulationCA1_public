@@ -323,7 +323,9 @@ class NeuronTemplate:
         with open(self.templatepath, 'r') as f:
             data = mmap.mmap(
                 f.fileno(), 0, access=mmap.ACCESS_READ).read().decode("utf-8")
-            p = re.compile(r'load_morphology\("morphologies", .*\)')
+            p = re.compile(r'load_morphology\("morpholog, .*\)')
+            if p.search(data) is None:
+                p = re.compile(r'load_morphology\(\$s2, ".*\)')
             if p.search(data) is None:
                 p = re.compile(r'load_morphology\(\$s1, ".*\)')
             self.morphology = re.findall(r' (".*[(.asc)]")', p.search(data).group(0))[0][1:-5]
@@ -833,7 +835,6 @@ class CA1_PC_migliore(NeuronTemplate):
     def __init__(self, miglioreModel, hoc_file, **kwargs):
         self.miglioreModel = miglioreModel
         self.hoc_file = hoc_file
-        kwargs['replace_axon'] = 'NA'
         if not 'morphologylocation' in kwargs.keys():
             kwargs['morphologylocation'] = os.path.join('./Model/MiglioreModels',miglioreModel,'morphology')
         super().__init__(templatepath=os.path.join('./Model/MiglioreModels',miglioreModel,hoc_file),
@@ -893,6 +894,8 @@ class cNACnoljp_migliore(NeuronTemplate):
     def __init__(self, miglioreModel, hoc_file, **kwargs):
         self.miglioreModel = miglioreModel
         self.hoc_file = hoc_file
+        if not 'morphologylocation' in kwargs.keys():
+            kwargs['morphologylocation'] = os.path.join('./Model/MiglioreModels',miglioreModel,'morphology')
         super().__init__(templatepath=os.path.join('./Model/MiglioreModels',miglioreModel,hoc_file),
                          templatename='cNACnoljp', **kwargs)
         self.load_template()
@@ -1278,23 +1281,32 @@ def _run_Migliore_PYR(miglioreModel, hoc_file):
     mod_path = os.path.join('./Model/MiglioreModels',miglioreModel,'mechanisms')
     h.nrn_load_dll(os.path.join(mod_path, 'nrnmech.dll'))
     print("succes load nrnmech.dll")
-    cell = CA1_PC_migliore(miglioreModel=miglioreModel, hoc_file=hoc_file)
+    cell = CA1_PC_migliore(miglioreModel=miglioreModel, hoc_file=hoc_file, replace_axon=False)
+    print(cell)
+    return cell
+
+def _run_Migliore_cnac_int(miglioreModel, hoc_file):
+    mod_path = os.path.join('./Model/MiglioreModels',miglioreModel,'mechanisms')
+    h.nrn_load_dll(os.path.join(mod_path, 'nrnmech.dll'))
+    print("succes load nrnmech.dll")
+    cell = cNACnoljp_migliore(miglioreModel=miglioreModel, hoc_file=hoc_file, replace_axon=False)
     print(cell)
     return cell
 
 if __name__ == '__main__':
     import glob
-    pyrs = glob.glob('./Model/MiglioreModels/CA1_pyr_cACpyr*')
-    miglioreModel = pyrs[13].rsplit('\\',1)[-1]
+    cells = glob.glob('./Model/MiglioreModels/CA1_int_cnac*')
+    miglioreModel = cells[13].rsplit('\\',1)[-1]
     hoc_file = "checkpoints/cell_seed3_0.hoc"
-    cell = _run_Migliore_PYR(miglioreModel, hoc_file)
+    cell = _run_Migliore_cnac_int(miglioreModel, hoc_file)
     cell.rotate_Cell(theta=-np.pi/2)
     #_colorsecs([0,], 'apicalTrunk', cell)
     cell.sec_plot()
-    plt.show(block=False)
-    apicmax = int(max([max([float(x.split('[')[-1][:-1]) for x in v]) for v in mapMorphotoList[cell.morphology].values() if v]))
-    print(miglioreModel, len(cell.apic), apicmax, cell.apic[apicmax])
-    apicalTrunk = [0,4,10,14,24,28,30,34,44,48,50]
-    apicalTrunk_ext = []
-    apicalTuft = [np.arange(51,71)]
-    obliques = [[1,2,3,5,6,7,8,9,11,12,13], np.arange(15,24),[25,26,27,29,31,32,33],np.arange(35,44),[45,46,47,49]]
+    plt.show(block=True)
+    print('')
+    # apicmax = int(max([max([float(x.split('[')[-1][:-1]) for x in v]) for v in mapMorphotoList[cell.morphology].values() if v]))
+    # print(miglioreModel, len(cell.apic), apicmax, cell.apic[apicmax])
+    # apicalTrunk = [0,4,10,14,24,28,30,34,44,48,50]
+    # apicalTrunk_ext = []
+    # apicalTuft = [np.arange(51,71)]
+    # obliques = [[1,2,3,5,6,7,8,9,11,12,13], np.arange(15,24),[25,26,27,29,31,32,33],np.arange(35,44),[45,46,47,49]]
