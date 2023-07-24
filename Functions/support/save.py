@@ -133,10 +133,10 @@ def addTracestoResults(traces, df):
     return out
 
 
-def createFolder(input):
+def createFolder(input, cellname):
     now = datetime.now()
     dt_string = now.strftime("%Y%m%d%H%M")
     results_dir = "./Results%s/Results_%s_%s_%s" % (
-        input.resultsFolder, input.subfolderSuffix, input.cellsopt.neurontemplate, dt_string)
+        input.resultsFolder, input.subfolderSuffix, cellname, dt_string)
     fig_dir = results_dir+"/Figures"
-    return results_dir, fig_dir
+    return str(results_dir).replace('\\','/'), str(fig_dir).replace('\\','/')

@@ -1,4 +1,5 @@
 import mmap
+import os
 import re
 
 import numpy as np
@@ -33,8 +34,8 @@ if not 'hShape_flag' in globals():
 morphocelltype = {
     '990803': 'SP_PC', '050921AM2': 'SP_PC', 'mpg141017_a1-2_idC': 'SP_PC', 'mpg141208_B_idA': 'SP_PC', 'mpg141209_A_idA': 'SP_PC', 'mpg141209_B_idA': 'SP_PC', 'mpg141215_A_idA': 'SP_PC', 'mpg141216_A_idA': 'SP_PC', 'mpg141217_A_idB': 'SP_PC', 'mpg150305_A_idB': 'SP_PC', 'oh140521_B0_Rat_idA': 'SP_PC', 'oh140521_B0_Rat_idC': 'SP_PC', 'oh140807_A0_idA': 'SP_PC', 'oh140807_A0_idB': 'SP_PC', 'oh140807_A0_idC': 'SP_PC', 'oh140807_A0_idF': 'SP_PC', 'oh140807_A0_idG': 'SP_PC', 'oh140807_A0_idH': 'SP_PC', 'oh140807_A0_idJ': 'SP_PC', '010710HP2': 'SP_Ivy', '011017HP2': 'SO_OLM', '011023HP2': 'SO_BS', '011127HP1': 'SLM_PPA', '031031AM1': 'SP_CCKBC', '060314AM2': 'SP_PVBC', '970509HP2': 'SO_Tri', '970627BHP1': 'SP_PVBC', '970717D': 'SP_Ivy', '970911C': 'SP_AA', '971114B': 'SO_Tri', '980120A': 'SO_BP', '980513B': 'SP_BS', '990111HP2': 'SP_PVBC', '990611HP2': 'SR_SCA', '990827IN5HP3': 'SR_IS1',
 }
-NeuronTemplates = ['CA1_PC_cAC_sig5', 'CA1_PC_cAC_sig6', 'CA1_PC_migliore', 'cNACnoljp_migliore', 'bACnoljp8',
-                   'bACnoljp7', 'cNACnoljp1', 'cNACnoljp2', 'INT_cAC_noljp4', 'INT_cAC_noljp3']
+NeuronTemplates = ['CA1_PC_cAC_sig5', 'CA1_PC_cAC_sig6', 'bACnoljp8',
+                   'bACnoljp7', 'cNACnoljp1', 'cNACnoljp2', 'INT_cAC_noljp4', 'INT_cAC_noljp3', 'CA1_PC_migliore', 'cNACnoljp_migliore']
 mapMorphotoList = {
     "mpg141208_B_idA": {
         'apicalTrunk': [f'apic[{i}]' for i in [0, 6, 8, 10, 12, 18, 20, 24, 26, 30, 46, 60, 62, 66, 68, 70]],
@@ -140,9 +141,10 @@ class NeuronTemplate:
     '''
 
     def __init__(self, templatepath, templatename, replace_axon=True, morphologylocation='./Model/morphologies', ID=0, ty=0, col=0, phi=0, theta=0, psi=0, movesomatoorigin=True, allign_axis=True, morphology=None, **kwargs):
-        self.templatepath = templatepath
+        #str path is to make sure that path has unix operation system separator convention / vs \\
+        self.templatepath = str(templatepath).replace('\\','/')
         self.templatename = templatename
-        self.morphologylocation = morphologylocation
+        self.morphologylocation = str(morphologylocation).replace('\\','/')
         self.replace_axon = str(replace_axon).lower()
         self.celsius = 34
         self.ID = ID
@@ -323,7 +325,7 @@ class NeuronTemplate:
         with open(self.templatepath, 'r') as f:
             data = mmap.mmap(
                 f.fileno(), 0, access=mmap.ACCESS_READ).read().decode("utf-8")
-            p = re.compile(r'load_morphology\("morpholog, .*\)')
+            p = re.compile(r'load_morphology\("morpholog*, .*\)')
             if p.search(data) is None:
                 p = re.compile(r'load_morphology\(\$s2, ".*\)')
             if p.search(data) is None:
@@ -834,10 +836,10 @@ class INT_cAC_noljp3(NeuronTemplate):
 class CA1_PC_migliore(NeuronTemplate):
     def __init__(self, miglioreModel, hoc_file, **kwargs):
         self.miglioreModel = miglioreModel
-        self.hoc_file = hoc_file
+        self.hoc_file = str(hoc_file).replace('\\','/')
         if not 'morphologylocation' in kwargs.keys():
-            kwargs['morphologylocation'] = os.path.join('./Model/MiglioreModels',miglioreModel,'morphology')
-        super().__init__(templatepath=os.path.join('./Model/MiglioreModels',miglioreModel,hoc_file),
+            kwargs['morphologylocation'] = '/'.join(('./Model/MiglioreModels',miglioreModel,'morphology'))
+        super().__init__(templatepath='/'.join(('./Model/MiglioreModels',miglioreModel,hoc_file)),
                          templatename='CA1_PC_cAC_sig', **kwargs)
         self.load_template()
         self.move_attributes()
@@ -849,13 +851,13 @@ class CA1_PC_migliore(NeuronTemplate):
         self.rotate_Cell(init_rotation=True)
 
     def __str__(self):
-        cell = self.hoc_file.split('cell_',1)[-1].split('.hoc')[0]
+        cell = self.hoc_file.split('cell_',1)[-1].split('.hoc')[0] if 'cell_' in self.hoc_file else ''
         miglioreModel = self.miglioreModel.rsplit('_',1)
         miglioreModel = f"{miglioreModel[0]}_{miglioreModel[1][:-6]}"
         try:
-            return f'{self.__class__.__name__}_{miglioreModel}{cell}_{self.ID}'
+            return f'{miglioreModel}_{cell}_{self.ID}'
         except:
-            return f'CA1_PC_migliore{miglioreModel}{cell}_{self.ID}'
+            return f'{miglioreModel}_{cell}_{self.ID}'
 
     def __repr__(self):
         return self.__str__()
@@ -893,7 +895,7 @@ class CA1_PC_migliore(NeuronTemplate):
 class cNACnoljp_migliore(NeuronTemplate):
     def __init__(self, miglioreModel, hoc_file, **kwargs):
         self.miglioreModel = miglioreModel
-        self.hoc_file = hoc_file
+        self.hoc_file = str(hoc_file).replace('\\','/')
         if not 'morphologylocation' in kwargs.keys():
             kwargs['morphologylocation'] = os.path.join('./Model/MiglioreModels',miglioreModel,'morphology')
         super().__init__(templatepath=os.path.join('./Model/MiglioreModels',miglioreModel,hoc_file),
@@ -908,13 +910,14 @@ class cNACnoljp_migliore(NeuronTemplate):
         self.rotate_Cell(init_rotation=True)
 
     def __str__(self):
-        cell = self.hoc_file.split('cell_',1)[-1].split('.hoc')[0]
+
+        cell = self.hoc_file.split('cell_',1)[-1].split('.hoc')[0] if 'cell_' in self.hoc_file else ''
         miglioreModel = self.miglioreModel.rsplit('_',1)
         miglioreModel = f"{miglioreModel[0]}_{miglioreModel[1][:-6]}"
         try:
-            return f'{self.__class__.__name__}_{miglioreModel}{cell}_{self.ID}'
+            return f'{miglioreModel}_{cell}_{self.ID}'
         except:
-            return f'cNACnoljp_migliore_{miglioreModel}{cell}_{self.ID}'
+            return f'{miglioreModel}_{cell}_{self.ID}'
 
     def __repr__(self):
         return self.__str__()
@@ -1289,14 +1292,14 @@ def _run_Migliore_cnac_int(miglioreModel, hoc_file):
     mod_path = os.path.join('./Model/MiglioreModels',miglioreModel,'mechanisms')
     h.nrn_load_dll(os.path.join(mod_path, 'nrnmech.dll'))
     print("succes load nrnmech.dll")
-    cell = cNACnoljp_migliore(miglioreModel=miglioreModel, hoc_file=hoc_file, replace_axon=False)
+    cell = cNACnoljp_migliore(miglioreModel=miglioreModel, hoc_file=hoc_file, replace_axon=True)
     print(cell)
     return cell
 
 if __name__ == '__main__':
     import glob
     cells = glob.glob('./Model/MiglioreModels/CA1_int_cnac*')
-    miglioreModel = cells[13].rsplit('\\',1)[-1]
+    miglioreModel = cells[0].rsplit('\\',1)[-1]
     hoc_file = "checkpoints/cell_seed3_0.hoc"
     cell = _run_Migliore_cnac_int(miglioreModel, hoc_file)
     cell.rotate_Cell(theta=-np.pi/2)

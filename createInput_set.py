@@ -327,6 +327,127 @@ def _main_const_intensity_single_pulse_differentmorpho_pyrs():
         for item in inputsoptall:
             file.write("%s\n" % item)
 
+def _main_const_intensity_single_pulse_MiglioreModels():
+    import glob
+    os.path.sep = "/"
+    os.sep = "/"
+    now = datetime.now()
+    dt_string = now.strftime("%Y%m%d")
+    folder = './Inputs/SDC%s_constI_miglioreModels/' % dt_string
+    os.makedirs(folder, exist_ok=True)
+    runlist_filenameoptall = folder+'runlistopt'
+
+    inputsoptall = []
+
+    Celltemplates = ['CA1_PC_migliore', 'cNACnoljp_migliore']
+    int_cnacs = [x.replace('\\','/') for x in glob.glob('./Model/MiglioreModels/CA1_int_cnac*/checkpoints/*.hoc')]
+    pyrs = [x.replace('\\','/') for x in glob.glob('./Model/MiglioreModels/CA1_pyr*/checkpoints/*.hoc')]
+    # opsinlocs_pyrs = #['soma','axon','all','alldend','apic','basal','apicaltrunk','apicaltrunk_ext','apicaltuft','obliques','apicalnotuft']
+    # ,'alldend','apic','basal','apicalnotuft']
+    opsinlocs_pyrs = ['all', 'soma', 'axon', 'basal', 'alldend', 'apic']
+    opsinlocs_interss = ['all', 'soma', 'alldend', 'axon']
+    Gmaxs = []  # see in loop below
+    Gmaxs_must = [1,10]
+    pds = [1,10,100]
+
+    for cell_model_path in np.concatenate([Cells.NeuronTemplates[:2]+Cells.NeuronTemplates[4:6],pyrs, int_cnacs]):
+        if cell_model_path in Cells.NeuronTemplates:
+            cell = cell_model_path
+            hoc_file = ''
+            miglioreModel = ''
+            morphologylocation = './Model/morphologies'
+            mod_path = './Model/Mods'
+            hoc_str = ''
+        else:
+            miglioreModel = cell_model_path.split("MiglioreModels/",1)[-1].split('/')[0]
+            "checkpoints/cell_seed3_0.hoc"
+            hoc_file = cell_model_path.split(miglioreModel+'/')[-1]
+            hoc_str = hoc_file.split('cell_',1)[-1].split('.hoc')[0] if 'cell_' in hoc_file else ''
+            cell = 'CA1_PC_migliore' if 'pyr_cac' in miglioreModel.lower() else 'cNACnoljp_migliore'
+            morphologylocation =  '/'.join(('./Model/MiglioreModels',miglioreModel,'morphology'))
+            mod_path  = '/'.join(('./Model/MiglioreModels',miglioreModel,'mechanisms'))
+        if 'pc' in cell.lower():
+            opsinlocs = opsinlocs_pyrs
+        else:
+            opsinlocs = opsinlocs_interss
+        for opsinloc in opsinlocs:
+            iter = -1
+            sublist = []
+            for Gmax in Gmaxs_must:
+                iter += 1
+
+                filenameopt = folder+f'input{cell}{miglioreModel}{hoc_str}_{opsinloc}_{iter}.json'
+                inputsoptall.append(filenameopt)
+                sublist.append(filenameopt)
+
+                input = stp.simParams({'test_flag': False, 'save_data_flag': True,
+                                      'save_input_flag': True, 'save_flag': True, 'plot_flag': False})
+
+                input.resultsFolder = '/SDC_constI_miglioreModels/' + \
+                    f'{cell}_{opsinloc}_{iter}'
+                input.subfolderSuffix = ''
+
+                input.duration = 100
+                input.v0 = -70
+
+                input.stimopt.stim_type = ['Optogxstim']
+                input.simulationType = ['SD_Optogenx']
+                input.mod_path  = mod_path
+
+                input.cellsopt.neurontemplate = cell
+
+                input.cellsopt.opsin_options.opsinlocations = opsinloc
+                input.cellsopt.opsin_options.Gmax_total = Gmax  # uS
+                input.cellsopt.opsin_options.distribution = f'distribution = lambda x: {1}'
+                # allign axo-somato-dendritic axis with z-axis
+                input.cellsopt.init_options.theta = -np.pi/2
+                input.cellsopt.init_options.replace_axon = False
+                input.cellsopt.init_options.miglioreModel = miglioreModel
+                input.cellsopt.init_options.hoc_file = hoc_file
+                input.cellsopt.init_options.morphologylocation = morphologylocation
+
+                input.stimopt.Ostimparams.filepath = 'Inputs/LightIntensityProfile/constant.txt'
+                input.stimopt.Ostimparams.amp = 1/3*10**5
+                input.stimopt.Ostimparams.delay = 100
+                input.stimopt.Ostimparams.pulseType = 'singleSquarePulse'
+                input.stimopt.Ostimparams.dur = 100
+
+                input.analysesopt.SDOptogenx.options['simdur'] = 500
+                input.analysesopt.SDOptogenx.options['delay'] = 100
+                input.analysesopt.SDOptogenx.options['vinit'] = -70
+                input.analysesopt.SDOptogenx.options['n_iters'] = 7
+                input.analysesopt.SDOptogenx.options['verbose'] = False
+                input.analysesopt.SDOptogenx.startamp = 1000
+                input.analysesopt.SDOptogenx.durs = pds
+                input.analysesopt.SDOptogenx.nr_pulseOI = 1
+                input.analysesopt.SDOptogenx.record_iOptogenx = 'chr2h134r'
+
+                input.analysesopt.recordSuccesRatio = False
+                input.analysesopt.sec_plot_flag = False
+                input.analysesopt.save_traces = False
+                input.analysesopt.save_rasterplot = False
+                input.analysesopt.save_SDplot = False
+                input.analysesopt.save_shapeplots = False
+                input.analysesopt.save_VTAplot = False
+
+                with open(filenameopt, 'w') as file:
+                    json.dump(input.todict(False), file,
+                              indent=4, cls=MyEncoder)
+
+            with open(folder+'sublist'+cell+miglioreModel+hoc_str+opsinloc+'.csv', 'w') as file:
+                file.write('inputfilename\n')
+                for item in sublist:
+                    file.write("%s\n" % item)
+
+    with open(runlist_filenameoptall+'.txt', 'w') as file:
+        for item in inputsoptall:
+            file.write("%s\n" % item)
+    with open(runlist_filenameoptall+'.csv', 'w') as file:
+        file.write('inputfilename\n')
+        for item in inputsoptall:
+            file.write("%s\n" % item)
+
+
 
 def _main_fixed_field_different_setups_xposssplit():
     now = datetime.now()
@@ -877,6 +998,7 @@ def _main_EET_multicells_allparams_pitchcelltypesplit_xposssplit():
 
 
 if __name__ == '__main__':
-    _main_const_intensity_single_pulse_differentmorpho_pyrs()
+    #_main_const_intensity_single_pulse_differentmorpho_pyrs()
     # _main_const_intensity_single_pulse()
+    _main_const_intensity_single_pulse_MiglioreModels()
     print('finish')

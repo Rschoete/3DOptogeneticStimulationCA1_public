@@ -2,21 +2,12 @@ import os
 import random
 import sys
 import time
+from datetime import datetime
+from pathlib import PurePath
 
 import numpy as np
-from neuron import h
-
-if os.path.exists("./Model/Mods/x86_64/libnrnmech.so"):
-    # linux compiled file (on hpc)
-    h.nrn_load_dll("./Model/Mods/x86_64/libnrnmech.so")
-    print("succes load libnrnmech.so")
-else:
-    # above file should not exist locally -> load windows compiled nrnmech
-    h.nrn_load_dll("./Model/Mods/nrnmech.dll")
-    print("succes load nrnmech.dll")
-from datetime import datetime
-
 from matplotlib import use as mpluse
+from neuron import h
 
 import Functions.globalFunctions.ExtracellularField as eF
 import Functions.globalFunctions.featExtract as featE
@@ -45,6 +36,17 @@ def fieldStimulation(input, cell=None, verbose=False, **kwargs):
 
     # start timer
     timerstart = time.time()
+
+
+    # Load channel mechanisms
+    if os.path.exists(os.path.join(input.mod_path,"x86_64/libnrnmech.so").replace('\\','/')):
+        # linux compiled file (on hpc)
+        h.nrn_load_dll(os.path.join(input.mod_path,"x86_64/libnrnmech.so").replace('\\','/'))
+        print("succes load libnrnmech.so")
+    else:
+        # above file should not exist locally -> load windows compiled nrnmech
+        h.nrn_load_dll(os.path.join(input.mod_path, 'nrnmech.dll').replace('\\','/'))
+        print("succes load nrnmech.dll")
 
     # Cell setup
     # ----------------------------------------------------------
@@ -297,7 +299,7 @@ def fieldStimulation(input, cell=None, verbose=False, **kwargs):
                 f"simulation finished in {timer_stopsim-timer_startsim:0.2f} s\n")
 
     # Create folders:
-    results_dir, fig_dir = sprt.save.createFolder(input)
+    results_dir, fig_dir = sprt.save.createFolder(input, str(cell))
     if input.save_flag:
         os.makedirs(results_dir, exist_ok=True)
         os.makedirs(fig_dir, exist_ok=True)
@@ -430,8 +432,8 @@ if __name__ == '__main__':
     now = datetime.now()
     cell = None
     Optogxfield = None
-
-    cellname = Cells.NeuronTemplates[0]
+    miglioreModel = "CA1_pyr_cACpyr_oh140807_A0_idA_20190305112828"
+    cellname = 'CA1_PC_migliore'#Cells.NeuronTemplates[0]
     opsinloc = 'all'
     idx = [0, 1, 2, 3, 5, 7, 9, 11, 13, 14]
     GmaxsIrrpd10 = [[0.2276, 0.4642, 0.5179, 1., 1.1788, 2.1544, 2.6827, 4.6416, 6.1054, 10., 13.895, 21.5443, 31.6228, 46.4159, 100.],
@@ -439,7 +441,7 @@ if __name__ == '__main__':
     pd = 10
 
     iter = -1
-    for idx in idx[:]:
+    for idx in idx[:1]:
         iter += 1
 
         input = stp.simParams({'test_flag': False, 'save_data_flag': True,
@@ -455,6 +457,8 @@ if __name__ == '__main__':
         input.stimopt.stim_type = ['Optogxstim']
         input.simulationType = ['normal']
 
+        input.mod_path = mod_path = os.path.join('./Model/MiglioreModels',miglioreModel,'mechanisms')
+
         input.cellsopt.neurontemplate = cellname
 
         input.cellsopt.opsin_options.opsinlocations = opsinloc
@@ -463,7 +467,10 @@ if __name__ == '__main__':
         # allign axo-somato-dendritic axis with z-axis
         input.cellsopt.init_options.theta = -np.pi/2
         input.cellsopt.init_options.replace_axon = False
-        input.cellsopt.init_options.morphology = "mpg141209_A_idA.asc"
+        input.cellsopt.init_options.morphology = None
+        input.cellsopt.init_options.miglioreModel = miglioreModel
+        input.cellsopt.init_options.hoc_file = "checkpoints/cell_seed3_0.hoc"
+        input.cellsopt.init_options.morphologylocation = os.path.join('./Model/MiglioreModels',miglioreModel,'morphology')
 
         input.stimopt.Ostimparams.filepath = 'Inputs/LightIntensityProfile/constant.txt'
         input.stimopt.Ostimparams.amp = GmaxsIrrpd10[1][idx]*1000

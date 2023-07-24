@@ -31,6 +31,7 @@ class simParams(object):
         self.defaultThreshold = -10
         self.v0 = -65
 
+        self.mod_path = './Model/Mods'
         self.resultsFolder = '/Temp'
         self.subfolderSuffix = ''
         self.signif = 4
@@ -99,6 +100,8 @@ class cellsOptions(Dict):
         self.init_options.psi = 0
         self.init_options.movesomatoorigin = True
         self.init_options.morphology = None  # if none default morphology is used
+        self.init_options.miglioreModel = None
+        self.init_options.hoc_file = None
 
         # cell transformation options
         # !Note!: currently in code first rotation then movement (with init_options movesomatoorigin true soma is at origin)
