@@ -83,7 +83,7 @@ def myfun(x, y): return list(mpl.colors.to_rgb(x))+[y]
 
 
 colorkeyval1 = {'soma': myfun('tab:red', 1), 'axon': myfun('tomato', 1), 'apic': myfun('seagreen', 0.6),
-                'dend': myfun('teal', 0.6), 'unclassified': [0, 0, 0]}
+                'dend': myfun('navy', 0.6), 'unclassified': [0, 0, 0]}
 colorkeyval2 = {'soma': myfun('tab:red', 1), 'axon': myfun('tomato', 0.2),
                 'dend': myfun('skyblue', 0.5), 'unclassified': [0, 0, 0]}
 

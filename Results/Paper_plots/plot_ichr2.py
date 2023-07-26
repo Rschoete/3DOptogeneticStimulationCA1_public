@@ -211,7 +211,7 @@ ichr2_peak_list = np.array(ichr2_peak_list)
 ichr2_ss_list = np.array(ichr2_ss_list)
 
 ax.plot(Iamps/1000, -ichr2_peak_list[:, 0], color='seagreen')
-ax.plot(Iamps/1000, -ichr2_ss_list[:, 0], color='lightgreen', linestyle='--')
+#ax.plot(Iamps/1000, -ichr2_ss_list[:, 0], color='lightgreen', linestyle='--')
 ax.plot(Iamps/1000, -ichr2_peak_list[:, 1], color='steelblue')
 ax.plot(Iamps/1000, -ichr2_ss_list[:, 1], color='lightblue', linestyle='--')
 ax.spines['top'].set_visible(False)

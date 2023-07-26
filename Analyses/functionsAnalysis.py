@@ -70,7 +70,7 @@ def heatmap(data: np.ndarray, row_labels: list[str], col_labels: list[str], ax=N
 
     return im, cbar
 
-def heatmap_colorcode(data: np.ndarray, row_labels: list[str], col_labels: list[str], ax=None, cbar_kw=None, cbarlabel: str = "", row_colors: list = None, column_colors: list = None, labelfs: int = 10, lw_grid: int = 1, **kwargs):
+def heatmap_colorcode(data: np.ndarray, row_labels: list[str], col_labels: list[str], ax=None, cbar_kw=None, cbarlabel: str = "", row_colors: list = None, column_colors: list = None, labelfs: int = 10, lw_grid: int = 1, colorCode_width = 0.01, **kwargs):
     """
     Create a heatmap from a numpy array and two lists of labels, add color coding at column and rows for extra categorization.
 
@@ -110,10 +110,10 @@ def heatmap_colorcode(data: np.ndarray, row_labels: list[str], col_labels: list[
     # Plot the heatmap
     im = ax.imshow(data, **kwargs)
     if row_colors is not None:
-        ax_row_cols = ax.inset_axes([-0.01, 0, 0.01, 1])
+        ax_row_cols = ax.inset_axes([-colorCode_width, 0, colorCode_width, 1])
         ax_row_cols.spines[:].set_visible(False)
     if column_colors is not None:
-        ax_column_cols = ax.inset_axes([0, 1, 1, 0.01,])
+        ax_column_cols = ax.inset_axes([0, 1, 1, colorCode_width,])
         ax_column_cols.spines[:].set_visible(False)
 
     # Create colorbar
